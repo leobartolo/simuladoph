@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Resultado Final — SimuladoPH{% endblock %}
+{% block content %}
+<div class="fade-in max-w-lg mx-auto text-center">
+  <div class="text-6xl mb-4">🎓</div>
+  <h1 class="text-2xl font-bold mb-1">Simulado concluído!</h1>
+  <p class="text-slate-500 text-sm mb-6">
+    {{ simulado.listas.replace(',', ' · ') }} &nbsp;·&nbsp;
+    {{ simulado.disciplinas.replace(',', ' · ') }}
+  </p>
+
+  <div class="grid grid-cols-2 gap-3 mb-6 text-left">
+    <div class="bg-white rounded-2xl shadow-sm p-4">
+      <p class="text-xs text-slate-400 font-medium uppercase tracking-wide">Questões</p>
+      <p class="text-3xl font-bold text-slate-700 mt-1">{{ total_questoes }}</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm p-4">
+      <p class="text-xs text-slate-400 font-medium uppercase tracking-wide">Rodadas</p>
+      <p class="text-3xl font-bold text-indigo-600 mt-1">{{ total_rodadas }}</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm p-4">
+      <p class="text-xs text-slate-400 font-medium uppercase tracking-wide">Total de respostas</p>
+      <p class="text-3xl font-bold text-slate-700 mt-1">{{ total_respostas }}</p>
+    </div>
+    <div class="bg-white rounded-2xl shadow-sm p-4">
+      <p class="text-xs text-slate-400 font-medium uppercase tracking-wide">Aproveitamento</p>
+      <p class="text-3xl font-bold text-green-600 mt-1">{{ pct }}<span class="text-lg text-slate-400">%</span></p>
+    </div>
+  </div>
+
+  <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 mb-6 text-sm text-indigo-800">
+    <p>Você acertou <strong>{{ total_acertos }}</strong> de <strong>{{ total_respostas }}</strong> respostas
+    ao longo de <strong>{{ total_rodadas }}</strong> rodada{{ 's' if total_rodadas > 1 }}.
+    Todas as {{ total_questoes }} questões foram dominadas! 💪</p>
+  </div>
+
+  <a href="{{ url_for('novo_simulado') }}"
+    class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-8 py-3 rounded-xl transition w-full mb-3">
+    Criar novo simulado
+  </a>
+  <a href="{{ url_for('dashboard') }}"
+    class="inline-block bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-8 py-3 rounded-xl transition w-full">
+    Voltar ao início
+  </a>
+</div>
+{% endblock %}

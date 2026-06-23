@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Novo Simulado — SimuladoPH{% endblock %}
+{% block content %}
+<div class="fade-in max-w-xl mx-auto">
+  <h1 class="text-2xl font-bold mb-1">Novo Simulado</h1>
+  <p class="text-slate-500 text-sm mb-6">Escolha as listas, matérias e quantidade de questões.</p>
+
+  <form method="POST" action="{{ url_for('novo_simulado') }}" class="space-y-6">
+
+    <!-- Listas PH -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <h2 class="font-semibold mb-3">📂 Listas PH</h2>
+      <p class="text-xs text-slate-500 mb-3">Selecione uma ou mais listas. Clique em "Todas" para marcar tudo.</p>
+      <div x-data="{ toggle() { const cbs = $el.querySelectorAll('input[type=checkbox]'); const allChecked = [...cbs].every(c=>c.checked); cbs.forEach(c => c.checked = !allChecked); } }">
+        <button type="button" @click="toggle()"
+          class="text-xs text-indigo-600 font-medium mb-3 hover:underline">Marcar / desmarcar todas</button>
+        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {% for lista in listas %}
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="listas" value="{{ lista }}" checked
+              class="accent-indigo-600 w-4 h-4" />
+            {{ lista }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Matérias -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <h2 class="font-semibold mb-3">📖 Matérias</h2>
+      <div x-data="{ toggle() { const cbs = $el.querySelectorAll('input[type=checkbox]'); const allChecked = [...cbs].every(c=>c.checked); cbs.forEach(c => c.checked = !allChecked); } }">
+        <button type="button" @click="toggle()"
+          class="text-xs text-indigo-600 font-medium mb-3 hover:underline">Marcar / desmarcar todas</button>
+        <div class="grid grid-cols-2 gap-2">
+          {% for disc in disciplinas %}
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="disciplinas" value="{{ disc }}" checked
+              class="accent-indigo-600 w-4 h-4" />
+            {{ disc }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Quantidade -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <h2 class="font-semibold mb-3">🔢 Quantidade de questões</h2>
+      <input type="number" name="quantidade" value="20" min="1" max="100"
+        class="w-32 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <p class="text-xs text-slate-400 mt-1">O sistema sorteia aleatoriamente.</p>
+    </div>
+
+    <!-- Dificuldade -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <h2 class="font-semibold mb-1">⚡ Dificuldade</h2>
+      <p class="text-xs text-slate-400 mb-4">Quantos acertos seguidos para eliminar uma questão do simulado.</p>
+      <div class="grid grid-cols-2 gap-3" x-data="{ nivel: '3' }">
+        {% set opcoes = [
+          ('1', 'Fácil',       '1 acerto elimina',    'bg-green-500',  'border-green-400'),
+          ('2', 'Médio',       '2 acertos seguidos',  'bg-yellow-500', 'border-yellow-400'),
+          ('3', 'Difícil',     '3 acertos seguidos',  'bg-orange-500', 'border-orange-400'),
+          ('4', 'Impossível',  '4 acertos seguidos',  'bg-red-500',    'border-red-400'),
+        ] %}
+        {% for val, label, desc, bg, borda in opcoes %}
+        <label class="cursor-pointer">
+          <input type="radio" name="dificuldade" value="{{ val }}" x-model="nivel" class="sr-only" {% if val == '3' %}checked{% endif %} />
+          <div class="rounded-xl border-2 p-3 transition-all"
+            :class="nivel === '{{ val }}' ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 bg-white hover:border-slate-300'">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="w-2.5 h-2.5 rounded-full {{ bg }} flex-shrink-0"></span>
+              <span class="font-semibold text-sm">{{ label }}</span>
+            </div>
+            <p class="text-xs text-slate-500">{{ desc }}</p>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="submit"
+      class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-base">
+      Gerar Simulado →
+    </button>
+
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — SimuladoPH{% endblock %}
+{% block content %}
+<div class="fade-in">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">Olá, {{ current_user.nome.split()[0] }}! 👋</h1>
+      <p class="text-slate-500 text-sm mt-1">Seus simulados aparecem aqui.</p>
+    </div>
+    <a href="{{ url_for('novo_simulado') }}"
+      class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-xl transition text-sm">
+      + Novo simulado
+    </a>
+  </div>
+
+  {% if resumos %}
+    <div class="space-y-3">
+      {% for r in resumos %}
+      {% set s = r.simulado %}
+      <div class="bg-white rounded-2xl shadow-sm p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+              {% if r.concluido %}bg-green-100 text-green-700{% else %}bg-indigo-100 text-indigo-700{% endif %}">
+              {% if r.concluido %}✅ Concluído{% else %}🔄 Em andamento{% endif %}
+            </span>
+            <span class="text-xs text-slate-400">{{ s.criado_em.strftime('%d/%m/%Y %H:%M') }}</span>
+          </div>
+          <p class="text-sm font-medium">{{ s.listas.replace(',', ' · ') }}</p>
+          <p class="text-xs text-slate-500">{{ s.disciplinas.replace(',', ' · ') }}</p>
+          <div class="mt-2 flex gap-4 text-xs text-slate-600">
+            <span>📋 {{ r.total }} questões</span>
+            <span>✅ {{ r.eliminadas }} dominadas</span>
+            <span>🎯 {{ r.restantes }} restantes</span>
+          </div>
+
+          {% if r.total > 0 %}
+          <div class="mt-2 w-full bg-slate-100 rounded-full h-2">
+            <div class="bg-green-400 h-2 rounded-full transition-all"
+              style="width: {{ (r.eliminadas / r.total * 100)|int }}%"></div>
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="flex-shrink-0">
+          {% if not r.concluido %}
+          <a href="{{ url_for('rodada', simulado_id=s.id) }}"
+            class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+            Continuar →
+          </a>
+          {% else %}
+          <a href="{{ url_for('resultado_final', simulado_id=s.id) }}"
+            class="inline-block bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold px-4 py-2 rounded-xl transition">
+            Ver resultado
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <div class="bg-white rounded-2xl shadow-sm p-12 text-center text-slate-400">
+      <div class="text-5xl mb-3">🎯</div>
+      <p class="font-medium">Nenhum simulado ainda.</p>
+      <p class="text-sm mt-1">Clique em <strong>+ Novo simulado</strong> para começar.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
