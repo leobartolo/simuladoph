@@ -19,6 +19,12 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# Render usa "postgres://" mas SQLAlchemy exige "postgresql://"
+uri = app.config["SQLALCHEMY_DATABASE_URI"]
+if uri.startswith("postgres://"):
+    app.config["SQLALCHEMY_DATABASE_URI"] = uri.replace("postgres://", "postgresql://", 1)
+
+
 db.init_app(app)
 
 login_manager = LoginManager(app)
@@ -403,6 +409,15 @@ def resultado_final(simulado_id):
         total_rodadas=total_rodadas,
         pct=round(total_acertos / total_respostas * 100) if total_respostas else 0,
     )
+
+@app.route("/admin/reset-senha/<email>/<nova_senha>")
+def reset_senha(email, nova_senha):
+    u = Usuario.query.filter_by(email=email).first()
+    if not u:
+        return "Usuário não encontrado"
+    u.senha_hash = generate_password_hash(nova_senha)
+    db.session.commit()
+    return f"Senha de {u.nome} alterada com sucesso!"
 
 
 # ---------------------------------------------------------------------------
