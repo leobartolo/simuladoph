@@ -419,6 +419,10 @@ def reset_senha(email, nova_senha):
     db.session.commit()
     return f"Senha de {u.nome} alterada com sucesso!"
 
+@app.route("/admin/listar-usuarios")
+def listar_usuarios():
+    usuarios = Usuario.query.all()
+    return "<br>".join([f"{u.id} - {u.nome} - {u.email}" for u in usuarios])
 
 # ---------------------------------------------------------------------------
 # Inicialização
