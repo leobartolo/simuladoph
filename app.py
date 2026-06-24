@@ -21,6 +21,20 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# Render usa "postgres://" mas SQLAlchemy exige "postgresql://"
+uri = app.config["SQLALCHEMY_DATABASE_URI"]
+if uri.startswith("postgres://"):
+    app.config["SQLALCHEMY_DATABASE_URI"] = uri.replace("postgres://", "postgresql://", 1)
+
+# Email
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 465
+app.config["MAIL_USE_TLS"] = False
+app.config["MAIL_USE_SSL"] = True
+app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USER")
+app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_USER")
+
 db.init_app(app)
 mail = Mail(app)
 
