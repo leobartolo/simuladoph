@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — SimuladoPH</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+  <nav class="bg-slate-800 text-white shadow-md">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <span class="font-bold text-lg">🔐 SimuladoPH — Admin</span>
+      <div class="flex gap-4 text-sm">
+        <a href="{{ url_for('dashboard') }}" class="opacity-75 hover:opacity-100">← App</a>
+        <a href="{{ url_for('admin_logout') }}" class="opacity-75 hover:opacity-100">Sair</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- Totais -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+      <div class="bg-white rounded-2xl shadow-sm p-5 text-center">
+        <p class="text-3xl font-bold text-indigo-600">{{ total_usuarios }}</p>
+        <p class="text-sm text-slate-500 mt-1">Usuários</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm p-5 text-center">
+        <p class="text-3xl font-bold text-green-600">{{ simulados|length }}</p>
+        <p class="text-sm text-slate-500 mt-1">Simulados (últimos 50)</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm p-5 text-center">
+        <p class="text-3xl font-bold text-amber-600">{{ total_questoes }}</p>
+        <p class="text-sm text-slate-500 mt-1">Questões no banco</p>
+      </div>
+    </div>
+
+    <!-- Usuários -->
+    <h2 class="text-lg font-bold mb-3">👥 Usuários</h2>
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden mb-8">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-100">
+          <tr>
+            <th class="text-left px-4 py-3 font-semibold text-slate-500">Nome</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-500">E-mail</th>
+            <th class="text-center px-4 py-3 font-semibold text-slate-500">Simulados</th>
+            <th class="text-center px-4 py-3 font-semibold text-slate-500">Concluídos</th>
+            <th class="text-center px-4 py-3 font-semibold text-slate-500">Respostas</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-500">Cadastro</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for r in resumo %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3 font-medium">{{ r.usuario.nome }}</td>
+            <td class="px-4 py-3 text-slate-500">{{ r.usuario.email }}</td>
+            <td class="px-4 py-3 text-center">{{ r.total_sims }}</td>
+            <td class="px-4 py-3 text-center text-green-600 font-semibold">{{ r.concluidos }}</td>
+            <td class="px-4 py-3 text-center">{{ r.total_respostas }}</td>
+            <td class="px-4 py-3 text-slate-400 text-xs">{{ r.usuario.criado_em.strftime('%d/%m/%Y') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Simulados recentes -->
+    <h2 class="text-lg font-bold mb-3">📋 Simulados recentes</h2>
+    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 border-b border-slate-100">
+          <tr>
+            <th class="text-left px-4 py-3 font-semibold text-slate-500">Usuário</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-500">Listas</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-500">Matérias</th>
+            <th class="text-center px-4 py-3 font-semibold text-slate-500">Questões</th>
+            <th class="text-center px-4 py-3 font-semibold text-slate-500">Rodadas</th>
+            <th class="text-center px-4 py-3 font-semibold text-slate-500">Status</th>
+            <th class="text-left px-4 py-3 font-semibold text-slate-500">Data</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+          {% for s in simulados %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3 font-medium">{{ s.usuario.nome }}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs">{{ s.listas }}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs">{{ s.disciplinas }}</td>
+            <td class="px-4 py-3 text-center">{{ s.itens|length }}</td>
+            <td class="px-4 py-3 text-center">{{ s.rodada_atual - 1 }}</td>
+            <td class="px-4 py-3 text-center">
+              {% if s.encerrado_em %}
+                <span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">✅ Concluído</span>
+              {% else %}
+                <span class="bg-indigo-100 text-indigo-700 text-xs font-semibold px-2 py-0.5 rounded-full">🔄 Em andamento</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-slate-400 text-xs">{{ s.criado_em.strftime('%d/%m/%Y %H:%M') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</body>
+</html>

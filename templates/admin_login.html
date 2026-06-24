@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Admin — SimuladoPH{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto fade-in">
+  <div class="text-center mb-8">
+    <div class="text-5xl mb-3">🔐</div>
+    <h1 class="text-2xl font-bold text-slate-700">Área Admin</h1>
+    <p class="text-slate-500 text-sm mt-1">Acesso restrito.</p>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm p-8">
+    <form method="POST" action="{{ url_for('admin_login') }}" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Senha de administrador</label>
+        <input type="password" name="senha" required autofocus
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
+      </div>
+      <button type="submit"
+        class="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold py-2 rounded-lg transition">
+        Entrar
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

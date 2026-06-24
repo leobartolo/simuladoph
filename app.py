@@ -409,6 +409,61 @@ def resultado_final(simulado_id):
 
 
 
+
+# ---------------------------------------------------------------------------
+# Admin
+# ---------------------------------------------------------------------------
+
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin_login():
+    if session.get("admin_ok"):
+        return redirect(url_for("admin_dashboard"))
+    if request.method == "POST":
+        if request.form.get("senha") == ADMIN_PASSWORD:
+            session["admin_ok"] = True
+            return redirect(url_for("admin_dashboard"))
+        flash("Senha incorreta.", "danger")
+    return render_template("admin_login.html")
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop("admin_ok", None)
+    return redirect(url_for("admin_login"))
+
+@app.route("/admin/dashboard")
+def admin_dashboard():
+    if not session.get("admin_ok"):
+        return redirect(url_for("admin_login"))
+
+    usuarios = Usuario.query.order_by(Usuario.criado_em.desc()).all()
+    resumo = []
+    for u in usuarios:
+        sims = Simulado.query.filter_by(usuario_id=u.id).all()
+        total_sims = len(sims)
+        concluidos = sum(1 for s in sims if s.encerrado_em)
+        total_respostas = Resposta.query.filter(
+            Resposta.simulado_id.in_([s.id for s in sims])
+        ).count() if sims else 0
+        resumo.append({
+            "usuario": u,
+            "total_sims": total_sims,
+            "concluidos": concluidos,
+            "total_respostas": total_respostas,
+        })
+
+    simulados = Simulado.query.order_by(Simulado.criado_em.desc()).limit(50).all()
+    total_questoes = Questao.query.count()
+
+    return render_template(
+        "admin_dashboard.html",
+        resumo=resumo,
+        simulados=simulados,
+        total_questoes=total_questoes,
+        total_usuarios=len(usuarios),
+    )
+
 # ---------------------------------------------------------------------------
 # Recuperação de senha
 # ---------------------------------------------------------------------------
@@ -475,13 +530,6 @@ def resetar_senha(token):
             return redirect(url_for("login"))
 
     return render_template("resetar_senha.html", token=token)
-
-
-
-@app.route("/admin/listar-usuarios")
-def listar_usuarios():
-    usuarios = Usuario.query.all()
-    return "<br>".join([f"{u.id} - {u.nome} - {u.email}" for u in usuarios])
 
 # ---------------------------------------------------------------------------
 # Inicialização
