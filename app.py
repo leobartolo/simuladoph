@@ -7,6 +7,8 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from models import db, Usuario, Questao, Alternativa, Simulado, SimuladoQuestao, Resposta
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
 
 # ---------------------------------------------------------------------------
 # App & configuração
@@ -19,13 +21,8 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Render usa "postgres://" mas SQLAlchemy exige "postgresql://"
-uri = app.config["SQLALCHEMY_DATABASE_URI"]
-if uri.startswith("postgres://"):
-    app.config["SQLALCHEMY_DATABASE_URI"] = uri.replace("postgres://", "postgresql://", 1)
-
-
 db.init_app(app)
+mail = Mail(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
@@ -410,19 +407,74 @@ def resultado_final(simulado_id):
         pct=round(total_acertos / total_respostas * 100) if total_respostas else 0,
     )
 
-@app.route("/admin/reset-senha/<email>/<nova_senha>")
-def reset_senha(email, nova_senha):
-    u = Usuario.query.filter_by(email=email).first()
-    if not u:
-        return "Usuário não encontrado"
-    u.senha_hash = generate_password_hash(nova_senha)
-    db.session.commit()
-    return f"Senha de {u.nome} alterada com sucesso!"
 
-@app.route("/admin/listar-usuarios")
-def listar_usuarios():
-    usuarios = Usuario.query.all()
-    return "<br>".join([f"{u.id} - {u.nome} - {u.email}" for u in usuarios])
+
+# ---------------------------------------------------------------------------
+# Recuperação de senha
+# ---------------------------------------------------------------------------
+
+def gerar_token(email):
+    s = URLSafeTimedSerializer(app.secret_key)
+    return s.dumps(email, salt="recuperar-senha")
+
+def verificar_token(token, expiracao=3600):
+    s = URLSafeTimedSerializer(app.secret_key)
+    try:
+        email = s.loads(token, salt="recuperar-senha", max_age=expiracao)
+    except Exception:
+        return None
+    return email
+
+
+@app.route("/esqueci-senha", methods=["GET", "POST"])
+def esqueci_senha():
+    if request.method == "POST":
+        email = request.form["email"].strip().lower()
+        usuario = Usuario.query.filter_by(email=email).first()
+        # Mesmo se não encontrar, mostra a mesma mensagem (segurança)
+        if usuario:
+            token = gerar_token(email)
+            link = url_for("resetar_senha", token=token, _external=True)
+            msg = Message(
+                subject="SimuladoPH — Recuperação de senha",
+                recipients=[email],
+                html=f"""
+                <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;">
+                  <h2 style="color:#4338ca;">SimuladoPH 📚</h2>
+                  <p>Olá, <strong>{usuario.nome}</strong>!</p>
+                  <p>Recebemos uma solicitação para redefinir a sua senha.</p>
+                  <p>Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>1 hora</strong>.</p>
+                  <a href="{link}" style="display:inline-block;background:#4338ca;color:#fff;
+                     padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0;">
+                    Redefinir senha
+                  </a>
+                  <p style="color:#888;font-size:12px;">Se você não solicitou isso, ignore este e-mail.</p>
+                </div>
+                """
+            )
+            mail.send(msg)
+        flash("Se esse e-mail estiver cadastrado, você receberá as instruções em breve.", "success")
+        return redirect(url_for("login"))
+    return render_template("esqueci_senha.html")
+
+
+@app.route("/resetar-senha/<token>", methods=["GET", "POST"])
+def resetar_senha(token):
+    email = verificar_token(token)
+    if not email:
+        flash("Link inválido ou expirado. Solicite um novo.", "danger")
+        return redirect(url_for("esqueci_senha"))
+
+    if request.method == "POST":
+        nova_senha = request.form["senha"]
+        usuario = Usuario.query.filter_by(email=email).first()
+        if usuario:
+            usuario.senha_hash = generate_password_hash(nova_senha)
+            db.session.commit()
+            flash("Senha alterada com sucesso! Faça login.", "success")
+            return redirect(url_for("login"))
+
+    return render_template("resetar_senha.html", token=token)
 
 # ---------------------------------------------------------------------------
 # Inicialização

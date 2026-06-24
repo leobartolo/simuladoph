@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Nova senha — SimuladoPH{% endblock %}
+{% block content %}
+<div class="max-w-sm mx-auto fade-in">
+  <div class="text-center mb-8">
+    <div class="text-5xl mb-3">🔒</div>
+    <h1 class="text-2xl font-bold text-indigo-700">Nova senha</h1>
+    <p class="text-slate-500 text-sm mt-1">Digite sua nova senha abaixo.</p>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-sm p-8">
+    <form method="POST" action="{{ url_for('resetar_senha', token=token) }}" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Nova senha</label>
+        <input type="password" name="senha" required minlength="6" autofocus
+          class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        <p class="text-xs text-slate-400 mt-1">Mínimo 6 caracteres.</p>
+      </div>
+      <button type="submit"
+        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition">
+        Salvar nova senha
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
