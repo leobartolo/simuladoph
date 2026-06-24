@@ -9,7 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Usuario, Questao, Alternativa, Simulado, SimuladoQuestao, Resposta
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
-
+import requests
 # ---------------------------------------------------------------------------
 # App & configuração
 # ---------------------------------------------------------------------------
@@ -26,17 +26,9 @@ uri = app.config["SQLALCHEMY_DATABASE_URI"]
 if uri.startswith("postgres://"):
     app.config["SQLALCHEMY_DATABASE_URI"] = uri.replace("postgres://", "postgresql://", 1)
 
-# Email
-app.config["MAIL_SERVER"] = "smtp.gmail.com"
-app.config["MAIL_PORT"] = 465
-app.config["MAIL_USE_TLS"] = False
-app.config["MAIL_USE_SSL"] = True
-app.config["MAIL_USERNAME"] = os.environ.get("MAIL_USER")
-app.config["MAIL_PASSWORD"] = os.environ.get("MAIL_PASSWORD")
-app.config["MAIL_DEFAULT_SENDER"] = os.environ.get("MAIL_USER")
+
 
 db.init_app(app)
-mail = Mail(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
@@ -504,24 +496,30 @@ def esqueci_senha():
         if usuario:
             token = gerar_token(email)
             link = url_for("resetar_senha", token=token, _external=True)
-            msg = Message(
-                subject="SimuladoPH — Recuperação de senha",
-                recipients=[email],
-                html=f"""
-                <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;">
-                  <h2 style="color:#4338ca;">SimuladoPH 📚</h2>
-                  <p>Olá, <strong>{usuario.nome}</strong>!</p>
-                  <p>Recebemos uma solicitação para redefinir a sua senha.</p>
-                  <p>Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>1 hora</strong>.</p>
-                  <a href="{link}" style="display:inline-block;background:#4338ca;color:#fff;
-                     padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0;">
-                    Redefinir senha
-                  </a>
-                  <p style="color:#888;font-size:12px;">Se você não solicitou isso, ignore este e-mail.</p>
-                </div>
-                """
+            requests.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {os.environ.get('RESEND_API_KEY')}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": "SimuladoPH <onboarding@resend.dev>",
+                    "to": [email],
+                    "subject": "SimuladoPH — Recuperação de senha",
+                    "html": f"""
+                    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;">
+                    <h2 style="color:#4338ca;">SimuladoPH 📚</h2>
+                    <p>Olá, <strong>{usuario.nome}</strong>!</p>
+                    <p>Clique no botão abaixo para criar uma nova senha. Válido por 1 hora.</p>
+                    <a href="{link}" style="display:inline-block;background:#4338ca;color:#fff;
+                        padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0;">
+                        Redefinir senha
+                    </a>
+                    </div>
+                    """,
+                }
             )
-            mail.send(msg)
+
         flash("Se esse e-mail estiver cadastrado, você receberá as instruções em breve.", "success")
         return redirect(url_for("login"))
     return render_template("esqueci_senha.html")
