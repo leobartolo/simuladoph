@@ -476,6 +476,13 @@ def resetar_senha(token):
 
     return render_template("resetar_senha.html", token=token)
 
+
+
+@app.route("/admin/listar-usuarios")
+def listar_usuarios():
+    usuarios = Usuario.query.all()
+    return "<br>".join([f"{u.id} - {u.nome} - {u.email}" for u in usuarios])
+
 # ---------------------------------------------------------------------------
 # Inicialização
 # ---------------------------------------------------------------------------
