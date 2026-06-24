@@ -517,7 +517,8 @@ def esqueci_senha():
                     </a>
                     </div>
                     """,
-                }
+                },
+                timeout=10
             )
 
         flash("Se esse e-mail estiver cadastrado, você receberá as instruções em breve.", "success")
