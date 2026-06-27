@@ -585,7 +585,20 @@ async def modo_inspecionar(page):
 async def main(lista_filtro: list[str] | None, inspecionar: bool, forcar: bool):
     async with async_playwright() as pw:
         headless = not inspecionar  # headed só no modo --inspecionar (local)
-        browser = await pw.chromium.launch(headless=headless)
+        browser = await pw.chromium.launch(
+            headless=headless,
+            args=[
+                "--disable-dev-shm-usage",   # usa /tmp ao invés de /dev/shm (padrão pequeno em containers)
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-gpu",
+                "--disable-extensions",
+                "--disable-background-networking",
+                "--disable-default-apps",
+                "--mute-audio",
+                "--no-first-run",
+            ],
+        )
         context = await browser.new_context()
         page = await context.new_page()
 
