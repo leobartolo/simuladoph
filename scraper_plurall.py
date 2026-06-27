@@ -114,35 +114,46 @@ async def fazer_login(page):
 # ─────────────────────────────────────────────
 async def ir_para_estudo_orientado(page):
     """Navega para atividades.plurall.net e abre a aba Estudo Orientado completa."""
-    # Navega sempre para a raiz para garantir o estado correto
     await page.goto("https://atividades.plurall.net/", wait_until="load")
     print(f"  URL: {page.url}")
 
-    # Aguarda a aba aparecer no DOM (pode demorar no SPA)
+    # Aguarda a aba aparecer no DOM — timeout maior para servidores lentos
+    aba_seletor = '[data-test-id="tab-Estudo-Orientado-(pHs)"]'
     try:
         await page.wait_for_function(
-            "() => !!document.querySelector('[data-test-id=\"tab-Estudo-Orientado-(pHs)\"]')",
-            timeout=15_000
+            f"() => !!document.querySelector('{aba_seletor}')",
+            timeout=45_000
         )
         print("  Aba encontrada no DOM")
     except PWTimeout:
-        print("  ⚠ Aba não encontrou no DOM — verificando o que existe...")
-        dom_info = await page.evaluate("""() => ({
-            url: window.location.href,
-            title: document.title,
-            testIds: Array.from(document.querySelectorAll('[data-test-id]'))
-                         .map(e => e.getAttribute('data-test-id')).slice(0, 20),
-            liTexts: Array.from(document.querySelectorAll('li'))
-                         .map(e => e.innerText?.trim()).filter(Boolean).slice(0, 10)
-        })""")
-        print(f"  DOM info: {dom_info}")
+        print("  ⚠ Aba não encontrou em 45s — tentando recarregar...")
+        await page.reload(wait_until="load")
+        try:
+            await page.wait_for_function(
+                f"() => !!document.querySelector('{aba_seletor}')",
+                timeout=30_000
+            )
+            print("  Aba encontrada após reload")
+        except PWTimeout:
+            dom_info = await page.evaluate("""() => ({
+                url: window.location.href,
+                title: document.title,
+                testIds: Array.from(document.querySelectorAll('[data-test-id]'))
+                             .map(e => e.getAttribute('data-test-id')).slice(0, 20),
+            })""")
+            print(f"  ⚠ Aba ainda não encontrada: {dom_info}")
 
     # Clica na aba
     await page.evaluate("""() => {
         const tab = document.querySelector('[data-test-id="tab-Estudo-Orientado-(pHs)"]');
         if (tab) tab.click();
     }""")
-    await page.wait_for_timeout(2500)
+
+    # Aguarda os cards aparecerem (não usa wait fixo)
+    try:
+        await page.wait_for_selector('[data-test-id*="inactive-material"]', timeout=20_000)
+    except PWTimeout:
+        await page.wait_for_timeout(3000)
 
     n = await page.locator('[data-test-id*="inactive-material"]').count()
     print(f"  Cards encerrados visíveis: {n}")
@@ -420,7 +431,7 @@ async def scrape_disciplina(page, lista_id: str, disciplina: str, tarefa_url: st
 
     # Aguarda os tiles de exercício aparecerem (SPA pode demorar)
     try:
-        await page.wait_for_selector('a[href*="/exercicio/"]', timeout=12_000)
+        await page.wait_for_selector('a[href*="/exercicio/"]', timeout=25_000)
     except PWTimeout:
         print(f"  ⚠ tiles de exercício não apareceram para {disciplina}")
         return []
