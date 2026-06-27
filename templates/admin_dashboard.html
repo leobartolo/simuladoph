@@ -130,11 +130,14 @@
           {% for s in simulados %}
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="px-4 py-3 font-semibold">{{ s.usuario.nome }}</td>
-            <td class="px-4 py-3 whitespace-normal max-w-xs">
+            <td class="px-4 py-3 whitespace-normal">
               {% set listas_list = s.listas.split(',') %}
-              {% for lista in listas_list %}
-                <span class="inline-block bg-indigo-50 text-indigo-600 text-xs font-medium px-1.5 py-0.5 rounded mr-0.5 mb-0.5">{{ lista }}</span>
-                {% if loop.index % 5 == 0 and not loop.last %}<br>{% endif %}
+              {% for i in range(0, listas_list|length, 5) %}
+              <div class="flex gap-0.5 mb-0.5">
+                {% for lista in listas_list[i:i+5] %}
+                <span class="bg-indigo-50 text-indigo-600 text-xs font-medium px-1.5 py-0.5 rounded">{{ lista }}</span>
+                {% endfor %}
+              </div>
               {% endfor %}
             </td>
             <td class="px-4 py-3 text-slate-500 text-xs">{{ s.disciplinas.replace(',', ' · ') }}</td>
