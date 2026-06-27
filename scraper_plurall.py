@@ -25,6 +25,10 @@ import unicodedata
 # Força UTF-8 no stdout para evitar UnicodeEncodeError no Windows (cp1252)
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+# Garante que o Playwright acha o Chromium no mesmo path usado no build
+_BROWSERS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".playwright-browsers")
+os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", _BROWSERS_PATH)
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
@@ -562,7 +566,8 @@ async def modo_inspecionar(page):
 # ─────────────────────────────────────────────
 async def main(lista_filtro: list[str] | None, inspecionar: bool, forcar: bool):
     async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=False)  # headed para debug
+        headless = not inspecionar  # headed só no modo --inspecionar (local)
+        browser = await pw.chromium.launch(headless=headless)
         context = await browser.new_context()
         page = await context.new_page()
 
