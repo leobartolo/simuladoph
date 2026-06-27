@@ -84,7 +84,7 @@
 
         <!-- Alternativas -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {% for letra in ['A','B','C','D'] %}
+          {% for letra in ['A','B','C','D','E'] if alts.get(letra) %}
           {% set texto = alts.get(letra, '') %}
           <div class="flex items-start gap-2 rounded-xl px-3 py-2
             {% if letra == q.gabarito %}bg-green-50 border border-green-200{% else %}bg-slate-50 border border-slate-100{% endif %}">

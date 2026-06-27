@@ -26,7 +26,7 @@ from app import app, db
 from models import Questao, Alternativa, SimuladoQuestao, Resposta
 
 XLSX = Path(__file__).parent / "questoes.xlsx"
-LETRAS_VALIDAS = {"A", "B", "C", "D"}
+LETRAS_VALIDAS = {"A", "B", "C", "D", "E"}
 
 
 def normalizar(txt):
@@ -42,6 +42,11 @@ def importar():
 
     wb = openpyxl.load_workbook(XLSX, data_only=True)
     ws = wb["Questões"] if "Questões" in wb.sheetnames else wb.active
+
+    # Detecta formato pelo cabeçalho: col 5 (índice 5) = "E" → novo; "Gabarito" → antigo
+    header = [ws.cell(1, c).value for c in range(1, 13)]
+    tem_coluna_e = len(header) > 5 and str(header[5] or "").strip().upper() == "E"
+    print(f"Formato Excel: {'novo (com coluna E)' if tem_coluna_e else 'antigo (sem coluna E)'}")
 
     with app.app_context():
         db.create_all()
@@ -66,12 +71,24 @@ def importar():
             alt_b     = str(row[2]).strip() if row[2] else ""
             alt_c     = str(row[3]).strip() if row[3] else ""
             alt_d     = str(row[4]).strip() if row[4] else ""
-            gabarito  = str(row[5]).strip().upper() if row[5] else ""
-            explicacao = str(row[6]).strip() if row[6] else ""
-            lista_ph  = str(row[7]).strip() if row[7] else ""
-            disciplina = normalizar(row[8]) if row[8] else ""
-            imagem    = str(row[9]).strip() if len(row) > 9 and row[9] else None
-            turma     = str(row[10]).strip() if len(row) > 10 and row[10] else "7ano"
+
+            if tem_coluna_e:
+                alt_e      = str(row[5]).strip() if len(row) > 5 and row[5] else ""
+                gabarito   = str(row[6]).strip().upper() if len(row) > 6 and row[6] else ""
+                explicacao = str(row[7]).strip() if len(row) > 7 and row[7] else ""
+                lista_ph   = str(row[8]).strip() if len(row) > 8 and row[8] else ""
+                disciplina = normalizar(row[9]) if len(row) > 9 and row[9] else ""
+                imagem     = str(row[10]).strip() if len(row) > 10 and row[10] else None
+                turma      = str(row[11]).strip() if len(row) > 11 and row[11] else "7ano"
+            else:
+                alt_e      = ""
+                gabarito   = str(row[5]).strip().upper() if len(row) > 5 and row[5] else ""
+                explicacao = str(row[6]).strip() if len(row) > 6 and row[6] else ""
+                lista_ph   = str(row[7]).strip() if len(row) > 7 and row[7] else ""
+                disciplina = normalizar(row[8]) if len(row) > 8 and row[8] else ""
+                imagem     = str(row[9]).strip() if len(row) > 9 and row[9] else None
+                turma      = str(row[10]).strip() if len(row) > 10 and row[10] else "7ano"
+
             if turma not in ("7ano", "8ano"):
                 turma = "7ano"
 
@@ -105,8 +122,9 @@ def importar():
             db.session.add(q)
             db.session.flush()  # gera o q.id
 
-            for letra, texto in [("A", alt_a), ("B", alt_b), ("C", alt_c), ("D", alt_d)]:
-                db.session.add(Alternativa(questao_id=q.id, letra=letra, texto=texto))
+            for letra, texto in [("A", alt_a), ("B", alt_b), ("C", alt_c), ("D", alt_d), ("E", alt_e)]:
+                if texto:
+                    db.session.add(Alternativa(questao_id=q.id, letra=letra, texto=texto))
 
             inseridas += 1
 

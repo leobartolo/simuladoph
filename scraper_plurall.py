@@ -351,7 +351,7 @@ async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int, 
         if not await letra_el.count():
             continue
         letra = (await letra_el.inner_text()).strip().upper()
-        if letra not in ("A", "B", "C", "D"):
+        if letra not in ("A", "B", "C", "D", "E"):
             continue
 
         # Texto da alternativa
@@ -422,6 +422,7 @@ async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int, 
         "B": alts.get("B", ""),
         "C": alts.get("C", ""),
         "D": alts.get("D", ""),
+        "E": alts.get("E", ""),
         "gabarito":   gabarito,
         "explicacao": explicacao,
         "lista":      lista_id,
@@ -534,15 +535,21 @@ def salvar_excel(novas: list[dict]):
     if XLSX_PATH.exists():
         wb = load_workbook(XLSX_PATH)
         ws = wb["Questões"] if "Questões" in wb.sheetnames else wb.active
+        # Migrar Excel antigo (sem coluna E) inserindo a coluna na posição 6
+        header_row = [ws.cell(1, c).value for c in range(1, 8)]
+        if len(header_row) >= 6 and header_row[5] != "E":
+            ws.insert_cols(6)
+            ws.cell(1, 6).value = "E"
+            print("✓ Migração automática: coluna E adicionada ao Excel")
     else:
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Questões"
-        ws.append(["Questao ", "A", "B", "C", "D", "Gabarito", "Explicacao", "Lista", "Disciplina", "Imagem", "Turma"])
+        ws.append(["Questao", "A", "B", "C", "D", "E", "Gabarito", "Explicacao", "Lista", "Disciplina", "Imagem", "Turma"])
 
     for q in novas:
         ws.append([
-            q["enunciado"], q["A"], q["B"], q["C"], q["D"],
+            q["enunciado"], q["A"], q["B"], q["C"], q["D"], q.get("E", ""),
             q["gabarito"], q["explicacao"], q["lista"], q["disciplina"],
             q["imagem"], q.get("turma", "7ano"),
         ])
