@@ -535,7 +535,7 @@ def admin_scraper():
         if proc and proc.poll() is None:
             proc.terminate()
 
-        cmd = [sys.executable, "-u", str(BASE_DIR / "scraper_plurall.py"), "--lista"] + listas
+        cmd = [sys.executable, "-u", str(BASE_DIR / "run_importacao.py"), "--lista"] + listas
         if forcar:
             cmd.append("--forcar")
 
