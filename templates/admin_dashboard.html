@@ -69,8 +69,8 @@
 
     <!-- Simulados recentes -->
     <h2 class="text-lg font-bold mb-3">📋 Simulados recentes</h2>
-    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <table class="w-full text-sm">
+    <div class="bg-white rounded-2xl shadow-sm overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
         <thead class="bg-slate-50 border-b border-slate-100">
           <tr>
             <th class="text-left px-4 py-3 font-semibold text-slate-500">Usuário</th>
@@ -83,29 +83,42 @@
             <th class="text-left px-4 py-3 font-semibold text-slate-500">Data</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-50">
+        <tbody class="divide-y divide-slate-100">
           {% for s in simulados %}
-          <tr class="hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium">{{ s.usuario.nome }}</td>
-            <td class="px-4 py-3 text-slate-500 text-xs">{{ s.listas }}</td>
-            <td class="px-4 py-3 text-slate-500 text-xs">{{ s.disciplinas }}</td>
-            <td class="px-4 py-3 text-center">{{ s.itens|length }}</td>
-            <td class="px-4 py-3 text-center">{{ s.rodada_atual - 1 }}</td>
-            <td class="px-4 py-3 text-center text-xs">
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="px-4 py-3 font-semibold">{{ s.usuario.nome }}</td>
+            <td class="px-4 py-3">
+              {% for lista in s.listas.split(',') %}
+              <span class="inline-block bg-indigo-50 text-indigo-600 text-xs font-medium px-1.5 py-0.5 rounded mr-0.5">{{ lista }}</span>
+              {% endfor %}
+            </td>
+            <td class="px-4 py-3 text-slate-500 text-xs">{{ s.disciplinas.replace(',', ' · ') }}</td>
+            <td class="px-4 py-3 text-center font-medium">{{ s.itens|length }}</td>
+            <td class="px-4 py-3 text-center text-slate-600">{{ s.rodada_atual - 1 }}</td>
+            <td class="px-4 py-3 text-center">
               {% if s.embaralhar_alternativas %}
-                <span title="Alternativas embaralhadas">🔀</span>
+                <span class="text-base" title="Alternativas embaralhadas">🔀</span>
               {% else %}
-                <span class="text-slate-300" title="Alternativas fixas">—</span>
+                <span class="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full" title="Alternativas fixas">Fixa</span>
               {% endif %}
             </td>
             <td class="px-4 py-3 text-center">
               {% if s.encerrado_em %}
-                <span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">✅ Concluído</span>
+                <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                  Concluído
+                </span>
               {% else %}
-                <span class="bg-indigo-100 text-indigo-700 text-xs font-semibold px-2 py-0.5 rounded-full">🔄 Em andamento</span>
+                <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                  <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"/></svg>
+                  Em andamento
+                </span>
               {% endif %}
             </td>
-            <td class="px-4 py-3 text-slate-400 text-xs">{{ s.criado_em.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs">
+              <div>{{ s.criado_em.strftime('%d/%m/%Y') }}</div>
+              <div class="text-slate-400">{{ s.criado_em.strftime('%H:%M') }}</div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
