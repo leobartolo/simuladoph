@@ -509,6 +509,37 @@ def admin_dashboard():
     )
 
 # ---------------------------------------------------------------------------
+# Admin — Banco de questões
+# ---------------------------------------------------------------------------
+
+@app.route("/admin/banco")
+def admin_banco():
+    if not session.get("admin_ok"):
+        return redirect(url_for("admin_login"))
+
+    lista_sel      = request.args.get("lista_ph", "")
+    disciplina_sel = request.args.get("disciplina", "")
+
+    q = Questao.query
+    if lista_sel:
+        q = q.filter_by(lista_ph=lista_sel)
+    if disciplina_sel:
+        q = q.filter_by(disciplina=disciplina_sel)
+    questoes = q.order_by(Questao.lista_ph, Questao.disciplina, Questao.id).all()
+
+    listas     = [r[0] for r in db.session.query(Questao.lista_ph).distinct().order_by(Questao.lista_ph).all()]
+    disciplinas = [r[0] for r in db.session.query(Questao.disciplina).distinct().order_by(Questao.disciplina).all()]
+
+    return render_template("admin_banco.html",
+        questoes=questoes,
+        listas=listas,
+        disciplinas=disciplinas,
+        lista_sel=lista_sel,
+        disciplina_sel=disciplina_sel,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Admin — Scraper / Importar Excel
 # ---------------------------------------------------------------------------
 
