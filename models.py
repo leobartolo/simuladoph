@@ -11,6 +11,7 @@ class Usuario(UserMixin, db.Model):
     nome = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     senha_hash = db.Column(db.String(256), nullable=False)
+    turma = db.Column(db.String(10), nullable=False, default='7ano', server_default='7ano')
     criado_em = db.Column(db.DateTime, default=datetime.now)
 
     simulados = db.relationship("Simulado", backref="usuario", lazy=True)
@@ -22,6 +23,7 @@ class Questao(db.Model):
     enunciado = db.Column(db.Text, nullable=False)
     lista_ph = db.Column(db.String(10), nullable=False)
     disciplina = db.Column(db.String(60), nullable=False)
+    turma = db.Column(db.String(10), nullable=False, default='7ano', server_default='7ano')
     gabarito = db.Column(db.String(1), nullable=False)  # A, B, C ou D (original)
     explicacao = db.Column(db.Text, default="")
     imagem = db.Column(db.String(120), nullable=True)

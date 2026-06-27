@@ -254,7 +254,7 @@ async def listar_disciplinas(page) -> list[dict]:
 # ─────────────────────────────────────────────
 # Extração: questão individual
 # ─────────────────────────────────────────────
-async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int) -> dict | None:
+async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int, turma: str = "7ano") -> dict | None:
     """Extrai enunciado, alternativas, gabarito, explicação e imagem da questão visível."""
     await page.wait_for_load_state("load")
     await page.wait_for_timeout(1000)
@@ -283,13 +283,14 @@ async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int) 
                 ext = ".png"
 
             # Nome do arquivo sem acentos (Ciências → cie, etc.)
+            img_prefix = f"{turma[:2]}_" if turma != "7ano" else ""
             num_lista = lista_id.replace("PH", "").zfill(2)
             disc_raw = norm_disc(disciplina)[:3].lower()
             disc_abrev = "".join(
                 c for c in unicodedata.normalize("NFKD", disc_raw)
                 if not unicodedata.combining(c)
             )
-            filename = f"ph{num_lista}_{disc_abrev}_{num:02d}{ext}"
+            filename = f"{img_prefix}ph{num_lista}_{disc_abrev}_{num:02d}{ext}"
             dest = IMG_DIR / filename
             IMG_DIR.mkdir(parents=True, exist_ok=True)
             try:
@@ -352,13 +353,14 @@ async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int) 
                     ext = Path(parsed_path).suffix.lower()
                     if ext not in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"):
                         ext = ".png"
+                    img_prefix = f"{turma[:2]}_" if turma != "7ano" else ""
                     num_lista = lista_id.replace("PH", "").zfill(2)
                     disc_raw = norm_disc(disciplina)[:3].lower()
                     disc_abrev = "".join(
                         c for c in unicodedata.normalize("NFKD", disc_raw)
                         if not unicodedata.combining(c)
                     )
-                    filename = f"ph{num_lista}_{disc_abrev}_{num:02d}_{letra.lower()}{ext}"
+                    filename = f"{img_prefix}ph{num_lista}_{disc_abrev}_{num:02d}_{letra.lower()}{ext}"
                     dest = IMG_DIR / filename
                     IMG_DIR.mkdir(parents=True, exist_ok=True)
                     try:
@@ -407,6 +409,7 @@ async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int) 
         "lista":      lista_id,
         "disciplina": norm_disc(disciplina),
         "imagem":     imagem_filename,
+        "turma":      turma,
     }
 
 
@@ -416,7 +419,7 @@ async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int) 
 DISCIPLINAS_IGNORAR = {"producao de texto e redacao", "producao de texto", "redacao"}
 
 
-async def scrape_disciplina(page, lista_id: str, disciplina: str, tarefa_url: str | None) -> list[dict]:
+async def scrape_disciplina(page, lista_id: str, disciplina: str, tarefa_url: str | None, turma: str = "7ano") -> list[dict]:
     # Produção de Texto é dissertativa — sem gabarito A/B/C/D
     if norm_disc(disciplina).lower() in DISCIPLINAS_IGNORAR:
         return []
@@ -454,7 +457,7 @@ async def scrape_disciplina(page, lista_id: str, disciplina: str, tarefa_url: st
 
     while True:
         try:
-            q = await extrair_questao_atual(page, lista_id, disciplina, num)
+            q = await extrair_questao_atual(page, lista_id, disciplina, num, turma)
             if q:
                 questoes.append(q)
         except Exception as e:
@@ -517,13 +520,13 @@ def salvar_excel(novas: list[dict]):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Questões"
-        ws.append(["Questao ", "A", "B", "C", "D", "Gabarito", "Explicacao", "Lista", "Disciplina", "Imagem"])
+        ws.append(["Questao ", "A", "B", "C", "D", "Gabarito", "Explicacao", "Lista", "Disciplina", "Imagem", "Turma"])
 
     for q in novas:
         ws.append([
             q["enunciado"], q["A"], q["B"], q["C"], q["D"],
             q["gabarito"], q["explicacao"], q["lista"], q["disciplina"],
-            q["imagem"],
+            q["imagem"], q.get("turma", "7ano"),
         ])
 
     wb.save(XLSX_PATH)
@@ -579,7 +582,7 @@ async def modo_inspecionar(page):
 # ─────────────────────────────────────────────
 # Main
 # ─────────────────────────────────────────────
-async def main(lista_filtro: list[str] | None, inspecionar: bool, forcar: bool):
+async def main(lista_filtro: list[str] | None, inspecionar: bool, forcar: bool, turma: str = "7ano"):
     async with async_playwright() as pw:
         headless = not inspecionar  # headed só no modo --inspecionar (local)
         browser = await pw.chromium.launch(
@@ -649,7 +652,7 @@ async def main(lista_filtro: list[str] | None, inspecionar: bool, forcar: bool):
                 questoes_lista: list[dict] = []
                 for disc in disciplinas:
                     print(f"  {disc['disciplina']} ({disc['href']})")
-                    qs = await scrape_disciplina(page, lista_id, disc["disciplina"], disc["href"])
+                    qs = await scrape_disciplina(page, lista_id, disc["disciplina"], disc["href"], turma)
                     print(f"  → {len(qs)} questões extraídas")
                     questoes_lista.extend(qs)
 
@@ -677,6 +680,9 @@ if __name__ == "__main__":
                         help="Remove a lista do Excel antes de reextrair (usar com --lista)")
     parser.add_argument("--inspecionar", action="store_true",
                         help="Abre browser pausado para inspecionar HTML")
+    parser.add_argument("--turma", default=None, choices=["7ano", "8ano"],
+                        help="Turma das questões a importar (7ano ou 8ano)")
     args = parser.parse_args()
 
-    asyncio.run(main(args.lista or None, args.inspecionar, args.forcar))
+    turma = args.turma or os.environ.get("SCRAPER_TURMA", "7ano")
+    asyncio.run(main(args.lista or None, args.inspecionar, args.forcar, turma))

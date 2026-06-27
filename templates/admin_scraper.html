@@ -55,6 +55,20 @@
         </div>
 
         <div>
+          <label class="block text-sm font-semibold text-slate-600 mb-2">Turma</label>
+          <div class="flex gap-3">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="turma" value="7ano" {% if turma == '7ano' %}checked{% endif %} class="accent-indigo-600">
+              <span class="text-sm">📗 7º ano</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="turma" value="8ano" {% if turma == '8ano' %}checked{% endif %} class="accent-indigo-600">
+              <span class="text-sm">📘 8º ano</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
           <p class="text-sm font-semibold text-slate-600 mb-2">Listas a importar</p>
           <div class="flex flex-wrap gap-2">
             {% for lista in listas %}

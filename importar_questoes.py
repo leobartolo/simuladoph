@@ -71,6 +71,9 @@ def importar():
             lista_ph  = str(row[7]).strip() if row[7] else ""
             disciplina = normalizar(row[8]) if row[8] else ""
             imagem    = str(row[9]).strip() if len(row) > 9 and row[9] else None
+            turma     = str(row[10]).strip() if len(row) > 10 and row[10] else "7ano"
+            if turma not in ("7ano", "8ano"):
+                turma = "7ano"
 
             # Normaliza disciplina: garante acentuação correta em todas
             mapa_disciplinas = {
@@ -97,6 +100,7 @@ def importar():
                 gabarito=gabarito,
                 explicacao=explicacao,
                 imagem=imagem,
+                turma=turma,
             )
             db.session.add(q)
             db.session.flush()  # gera o q.id

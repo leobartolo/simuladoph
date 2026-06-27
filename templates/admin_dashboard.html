@@ -46,6 +46,7 @@
           <tr>
             <th class="text-left px-4 py-3 font-semibold text-slate-500">Nome</th>
             <th class="text-left px-4 py-3 font-semibold text-slate-500">E-mail</th>
+            <th class="text-center px-4 py-3 font-semibold text-slate-500">Turma</th>
             <th class="text-center px-4 py-3 font-semibold text-slate-500">Simulados</th>
             <th class="text-center px-4 py-3 font-semibold text-slate-500">Concluídos</th>
             <th class="text-center px-4 py-3 font-semibold text-slate-500">Respostas</th>
@@ -58,6 +59,12 @@
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="px-4 py-3 font-semibold">{{ r.usuario.nome }}</td>
             <td class="px-4 py-3 text-slate-500">{{ r.usuario.email }}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+                {% if r.usuario.turma == '7ano' %}bg-green-100 text-green-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                {{ r.usuario.turma }}
+              </span>
+            </td>
             <td class="px-4 py-3 text-center">{{ r.total_sims }}</td>
             <td class="px-4 py-3 text-center text-green-600 font-semibold">{{ r.concluidos }}</td>
             <td class="px-4 py-3 text-center">{{ r.total_respostas }}</td>
@@ -69,6 +76,12 @@
                 <button onclick="document.getElementById('modal-senha-{{ r.usuario.id }}').classList.remove('hidden')"
                   class="text-xs bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 px-2 py-1 rounded-lg transition font-medium">
                   🔑 Senha
+                </button>
+
+                <!-- Mudar turma -->
+                <button onclick="document.getElementById('modal-turma-{{ r.usuario.id }}').classList.toggle('hidden')"
+                  class="text-xs bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 px-2 py-1 rounded-lg transition font-medium">
+                  🎓 Turma
                 </button>
 
                 <!-- Excluir -->
@@ -85,7 +98,7 @@
 
           <!-- Modal mudar senha -->
           <tr id="modal-senha-{{ r.usuario.id }}" class="hidden bg-indigo-50">
-            <td colspan="7" class="px-4 py-3">
+            <td colspan="8" class="px-4 py-3">
               <form method="POST" action="{{ url_for('admin_mudar_senha', uid=r.usuario.id) }}"
                 class="flex items-center gap-3">
                 <span class="text-sm font-medium text-indigo-700">Nova senha para {{ r.usuario.nome }}:</span>
@@ -105,6 +118,30 @@
             </td>
           </tr>
 
+          <!-- Modal mudar turma -->
+          <tr id="modal-turma-{{ r.usuario.id }}" class="hidden bg-indigo-50">
+            <td colspan="8" class="px-4 py-3">
+              <form method="POST" action="{{ url_for('admin_mudar_turma', uid=r.usuario.id) }}"
+                class="flex items-center gap-3">
+                <span class="text-sm font-medium text-indigo-700">Turma de {{ r.usuario.nome }}:</span>
+                <select name="turma"
+                  class="border border-indigo-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                  <option value="7ano" {% if r.usuario.turma == '7ano' %}selected{% endif %}>7º ano</option>
+                  <option value="8ano" {% if r.usuario.turma == '8ano' %}selected{% endif %}>8º ano</option>
+                </select>
+                <button type="submit"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                  Salvar
+                </button>
+                <button type="button"
+                  onclick="document.getElementById('modal-turma-{{ r.usuario.id }}').classList.add('hidden')"
+                  class="text-xs text-slate-500 hover:text-slate-700">
+                  Cancelar
+                </button>
+              </form>
+            </td>
+          </tr>
+
           {% endfor %}
         </tbody>
       </table>
@@ -117,6 +154,7 @@
         <thead class="bg-slate-50 border-b border-slate-100">
           <tr>
             <th class="text-left px-4 py-3 font-semibold text-slate-500">Usuário</th>
+            <th class="text-center px-4 py-3 font-semibold text-slate-500">Turma</th>
             <th class="text-left px-4 py-3 font-semibold text-slate-500">Listas</th>
             <th class="text-left px-4 py-3 font-semibold text-slate-500">Matérias</th>
             <th class="text-center px-4 py-3 font-semibold text-slate-500">Questões</th>
@@ -130,6 +168,12 @@
           {% for s in simulados %}
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="px-4 py-3 font-semibold">{{ s.usuario.nome }}</td>
+            <td class="px-4 py-3 text-center">
+              <span class="text-xs font-semibold px-2 py-0.5 rounded-full
+                {% if s.usuario.turma == '7ano' %}bg-green-100 text-green-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                {{ s.usuario.turma }}
+              </span>
+            </td>
             <td class="px-4 py-3 whitespace-normal">
               {% set listas_list = s.listas.split(',') %}
               {% for i in range(0, listas_list|length, 5) %}

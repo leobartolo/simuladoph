@@ -86,8 +86,11 @@ def registro():
         if Usuario.query.filter_by(email=email).first():
             flash("E-mail já cadastrado.", "danger")
         else:
+            turma = request.form.get("turma", "7ano")
+            if turma not in ("7ano", "8ano"):
+                turma = "7ano"
             u = Usuario(nome=nome, email=email,
-                        senha_hash=generate_password_hash(senha))
+                        senha_hash=generate_password_hash(senha), turma=turma)
             db.session.add(u)
             db.session.commit()
             login_user(u)
@@ -139,14 +142,8 @@ def dashboard():
 @app.route("/novo", methods=["GET", "POST"])
 @login_required
 def novo_simulado():
-    listas_disponiveis = sorted(
-        db.session.query(Questao.lista_ph).distinct().all(), key=lambda x: x[0]
-    )
-    disciplinas_disponiveis = sorted(
-        db.session.query(Questao.disciplina).distinct().all(), key=lambda x: x[0]
-    )
-    listas_disponiveis = [r[0] for r in listas_disponiveis]
-    disciplinas_disponiveis = [r[0] for r in disciplinas_disponiveis]
+    listas_disponiveis = sorted({q.lista_ph for q in Questao.query.filter_by(turma=current_user.turma).all()})
+    disciplinas_disponiveis = sorted({q.disciplina for q in Questao.query.filter_by(turma=current_user.turma).all()})
 
     if request.method == "POST":
         listas = request.form.getlist("listas")
@@ -161,6 +158,7 @@ def novo_simulado():
             Questao.query
             .filter(Questao.lista_ph.in_(listas))
             .filter(Questao.disciplina.in_(disciplinas))
+            .filter(Questao.turma == current_user.turma)
             .all()
         )
         if not questoes:
@@ -493,6 +491,20 @@ def admin_mudar_senha(uid):
     return redirect(url_for("admin_dashboard"))
 
 
+@app.route("/admin/usuario/<int:uid>/turma", methods=["POST"])
+def admin_mudar_turma(uid):
+    if not session.get("admin_ok"):
+        return redirect(url_for("admin_login"))
+    u = db.session.get(Usuario, uid)
+    if u:
+        nova_turma = request.form.get("turma", "7ano")
+        if nova_turma in ("7ano", "8ano"):
+            u.turma = nova_turma
+            db.session.commit()
+            flash(f"Turma de {u.nome} alterada para {nova_turma}.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+
 @app.route("/admin/usuario/<int:uid>/deletar", methods=["POST"])
 def admin_deletar_usuario(uid):
     if not session.get("admin_ok"):
@@ -560,16 +572,22 @@ def admin_banco():
 
     lista_sel      = request.args.get("lista_ph", "")
     disciplina_sel = request.args.get("disciplina", "")
+    turma_sel      = request.args.get("turma", "")
 
     q = Questao.query
+    if turma_sel:
+        q = q.filter_by(turma=turma_sel)
     if lista_sel:
         q = q.filter_by(lista_ph=lista_sel)
     if disciplina_sel:
         q = q.filter_by(disciplina=disciplina_sel)
     questoes = q.order_by(Questao.lista_ph, Questao.disciplina, Questao.id).all()
 
-    listas     = [r[0] for r in db.session.query(Questao.lista_ph).distinct().order_by(Questao.lista_ph).all()]
-    disciplinas = [r[0] for r in db.session.query(Questao.disciplina).distinct().order_by(Questao.disciplina).all()]
+    base_q = Questao.query
+    if turma_sel:
+        base_q = base_q.filter_by(turma=turma_sel)
+    listas     = [r[0] for r in base_q.with_entities(Questao.lista_ph).distinct().order_by(Questao.lista_ph).all()]
+    disciplinas = [r[0] for r in base_q.with_entities(Questao.disciplina).distinct().order_by(Questao.disciplina).all()]
 
     return render_template("admin_banco.html",
         questoes=questoes,
@@ -577,6 +595,8 @@ def admin_banco():
         disciplinas=disciplinas,
         lista_sel=lista_sel,
         disciplina_sel=disciplina_sel,
+        turma_sel=turma_sel,
+        turmas=["7ano", "8ano"],
     )
 
 
@@ -622,6 +642,10 @@ def admin_scraper():
     if request.method == "POST":
         listas = request.form.getlist("listas")
         forcar = request.form.get("forcar") == "1"
+        turma_scraper = request.form.get("turma", "7ano")
+        if turma_scraper not in ("7ano", "8ano"):
+            turma_scraper = "7ano"
+        session["scraper_turma"] = turma_scraper
 
         if not listas:
             flash("Selecione pelo menos uma lista.", "warning")
@@ -651,6 +675,7 @@ def admin_scraper():
         env["PYTHONIOENCODING"]  = "utf-8"
         env["PLURALL_USUARIO"]   = usuario
         env["PLURALL_SENHA"]     = senha
+        env["SCRAPER_TURMA"]     = turma_scraper
 
         _scraper_proc["proc"] = subprocess.Popen(
             cmd, stdout=log_file, stderr=subprocess.STDOUT,
@@ -679,6 +704,7 @@ def admin_scraper():
         listas=listas_possiveis,
         plurall_usuario=session.get("plurall_usuario", ""),
         plurall_senha=session.get("plurall_senha", ""),
+        turma=session.get("scraper_turma", "7ano"),
     )
 
 
@@ -775,6 +801,21 @@ def _migrar_banco():
                 conn.execute(text("ALTER TABLE simulados ADD COLUMN embaralhar_alternativas BOOLEAN NOT NULL DEFAULT TRUE"))
                 conn.commit()
                 print("Migração: coluna embaralhar_alternativas adicionada.")
+
+        # Para tabela usuarios
+        cols_usuarios = {c["name"] for c in inspector.get_columns("usuarios")}
+        with db.engine.connect() as conn:
+            if "turma" not in cols_usuarios:
+                conn.execute(text("ALTER TABLE usuarios ADD COLUMN turma VARCHAR(10) NOT NULL DEFAULT '7ano'"))
+                conn.commit()
+                print("Migração: coluna turma adicionada em usuarios.")
+
+        cols_questoes = {c["name"] for c in inspector.get_columns("questoes")}
+        with db.engine.connect() as conn:
+            if "turma" not in cols_questoes:
+                conn.execute(text("ALTER TABLE questoes ADD COLUMN turma VARCHAR(10) NOT NULL DEFAULT '7ano'"))
+                conn.commit()
+                print("Migração: coluna turma adicionada em questoes.")
 
 _migrar_banco()
 
