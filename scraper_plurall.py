@@ -427,14 +427,21 @@ async def scrape_disciplina(page, lista_id: str, disciplina: str, tarefa_url: st
     url_base = "https://atividades.plurall.net"
     if tarefa_url:
         await page.goto(urljoin(url_base, tarefa_url), wait_until="load")
-        await page.wait_for_timeout(2000)
+        await page.wait_for_timeout(3000)
 
-    # Aguarda os tiles de exercício aparecerem (SPA pode demorar)
+    # Aguarda os tiles de exercício aparecerem; se falhar, recarrega e tenta de novo
     try:
         await page.wait_for_selector('a[href*="/exercicio/"]', timeout=25_000)
     except PWTimeout:
-        print(f"  ⚠ tiles de exercício não apareceram para {disciplina}")
-        return []
+        print(f"  ⚠ tiles não apareceram — recarregando...")
+        if tarefa_url:
+            await page.goto(urljoin(url_base, tarefa_url), wait_until="load")
+            await page.wait_for_timeout(5000)
+        try:
+            await page.wait_for_selector('a[href*="/exercicio/"]', timeout=25_000)
+        except PWTimeout:
+            print(f"  ⚠ tiles de exercício não apareceram para {disciplina}")
+            return []
 
     try:
         primeiro = page.locator('a[href*="/exercicio/"]').first
@@ -631,7 +638,7 @@ async def main(lista_filtro: list[str] | None, inspecionar: bool, forcar: bool):
 
                 questoes_lista: list[dict] = []
                 for disc in disciplinas:
-                    print(f"  {disc['disciplina']}")
+                    print(f"  {disc['disciplina']} ({disc['href']})")
                     qs = await scrape_disciplina(page, lista_id, disc["disciplina"], disc["href"])
                     print(f"  → {len(qs)} questões extraídas")
                     questoes_lista.extend(qs)
