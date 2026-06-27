@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Importar Questões — SimuladoPH Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  {% if rodando %}
+  <meta http-equiv="refresh" content="4">
+  {% endif %}
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+  <nav class="bg-slate-800 text-white shadow-md">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <span class="font-bold text-lg">📥 Importar Questões — SimuladoPH</span>
+      <div class="flex gap-4 text-sm">
+        <a href="{{ url_for('admin_dashboard') }}" class="opacity-75 hover:opacity-100">← Dashboard</a>
+        <a href="{{ url_for('admin_logout') }}" class="opacity-75 hover:opacity-100">Sair</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-4 py-8 space-y-6">
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in msgs %}
+      <div class="rounded-xl px-4 py-3 text-sm font-medium
+        {% if cat == 'success' %}bg-green-100 text-green-800{% else %}bg-amber-100 text-amber-800{% endif %}">
+        {{ msg }}
+      </div>
+      {% endfor %}
+    {% endwith %}
+
+    <!-- Formulário -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <h2 class="text-lg font-bold mb-4">Importar questões do Plurall</h2>
+      <form method="POST" class="space-y-5">
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-slate-600 mb-1">Usuário Plurall</label>
+            <input type="text" name="plurall_usuario" value="{{ plurall_usuario }}"
+              autocomplete="username"
+              class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              placeholder="ex: ABC12345" required>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-slate-600 mb-1">Senha Plurall</label>
+            <input type="password" name="plurall_senha" value="{{ plurall_senha }}"
+              autocomplete="current-password"
+              class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              placeholder="••••••••" required>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-sm font-semibold text-slate-600 mb-2">Listas a importar</p>
+          <div class="flex flex-wrap gap-2">
+            {% for lista in listas %}
+            <label class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 transition text-sm">
+              <input type="checkbox" name="listas" value="{{ lista }}" class="accent-indigo-600">
+              {{ lista }}
+            </label>
+            {% endfor %}
+          </div>
+          <button type="button" onclick="toggleAll()"
+            class="mt-2 text-xs text-indigo-600 hover:underline">
+            Selecionar / desmarcar todas
+          </button>
+        </div>
+
+        <div>
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="forcar" value="1" class="accent-red-500">
+            <span><strong>Forçar reextração</strong> — remove as listas selecionadas do Excel antes de reimportar</span>
+          </label>
+        </div>
+
+        <button type="submit"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-xl transition
+            {% if rodando %}opacity-50 cursor-not-allowed{% endif %}"
+          {% if rodando %}disabled{% endif %}>
+          {% if rodando %}⏳ Importação em execução...{% else %}▶ Iniciar importação{% endif %}
+        </button>
+      </form>
+    </div>
+
+    <!-- Log -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-bold">Log de execução</h2>
+        {% if rodando %}
+        <span class="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-1 rounded-full animate-pulse">
+          ● Rodando — atualizando a cada 4s
+        </span>
+        {% endif %}
+      </div>
+      <pre class="bg-slate-900 text-green-300 text-xs rounded-xl p-4 overflow-auto max-h-[500px] whitespace-pre-wrap font-mono">{{ log or '(sem log)' }}</pre>
+    </div>
+
+  </main>
+
+  <script>
+    function toggleAll() {
+      const boxes = document.querySelectorAll('input[name="listas"]');
+      const anyChecked = Array.from(boxes).some(b => b.checked);
+      boxes.forEach(b => b.checked = !anyChecked);
+    }
+    // Scroll log to bottom
+    const pre = document.querySelector('pre');
+    if (pre) pre.scrollTop = pre.scrollHeight;
+  </script>
+</body>
+</html>

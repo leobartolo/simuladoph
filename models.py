@@ -11,7 +11,7 @@ class Usuario(UserMixin, db.Model):
     nome = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     senha_hash = db.Column(db.String(256), nullable=False)
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    criado_em = db.Column(db.DateTime, default=datetime.now)
 
     simulados = db.relationship("Simulado", backref="usuario", lazy=True)
 
@@ -51,9 +51,10 @@ class Simulado(db.Model):
     disciplinas = db.Column(db.String(200), nullable=False)      # "Matemática,..."
     acertos_para_eliminar = db.Column(db.Integer, default=3)  # 1=Fácil 2=Médio 3=Difícil 4=Impossível
     rodada_atual = db.Column(db.Integer, default=1)
-    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    criado_em = db.Column(db.DateTime, default=datetime.now)
     encerrado_em = db.Column(db.DateTime, nullable=True)
 
+    fila_json = db.Column(db.Text, nullable=True)   # IDs da fila atual (JSON) para retomada
     itens = db.relationship("SimuladoQuestao", backref="simulado", lazy=True)
 
 
@@ -95,4 +96,4 @@ class Resposta(db.Model):
     rodada = db.Column(db.Integer, nullable=False)
     letra_escolhida = db.Column(db.String(1), nullable=False)   # letra exibida
     correta = db.Column(db.Boolean, nullable=False)
-    respondida_em = db.Column(db.DateTime, default=datetime.utcnow)
+    respondida_em = db.Column(db.DateTime, default=datetime.now)

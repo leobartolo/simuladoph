@@ -1,11 +1,16 @@
 import os
+import json
 import random
+import subprocess
+import sys
 from datetime import datetime
+from pathlib import Path
 
 from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from sqlalchemy import inspect as sa_inspect, text
 from models import db, Usuario, Questao, Alternativa, Simulado, SimuladoQuestao, Resposta
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
@@ -111,17 +116,18 @@ def dashboard():
         .order_by(Simulado.criado_em.desc())
         .all()
     )
-    # Resumo rápido por simulado
     resumos = []
     for s in simulados:
         total = len(s.itens)
         eliminadas = sum(1 for i in s.itens if i.eliminada)
+        tem_fila = bool(s.fila_json and json.loads(s.fila_json))
         resumos.append({
             "simulado": s,
             "total": total,
             "eliminadas": eliminadas,
             "restantes": total - eliminadas,
             "concluido": s.encerrado_em is not None,
+            "tem_fila": tem_fila,
         })
     return render_template("dashboard.html", resumos=resumos)
 
@@ -222,7 +228,7 @@ def rodada(simulado_id):
     itens = _itens_ativos(simulado_id)
     if not itens:
         # Todas eliminadas → encerra
-        s.encerrado_em = datetime.utcnow()
+        s.encerrado_em = datetime.now()
         db.session.commit()
         return redirect(url_for("resultado_final", simulado_id=simulado_id))
 
@@ -233,10 +239,14 @@ def rodada(simulado_id):
         item.set_ordem(ordem)
     db.session.commit()
 
-    # Guarda a fila da rodada na sessão
-    session[f"fila_{simulado_id}"] = [i.id for i in itens]
+    ids = [i.id for i in itens]
+    session[f"fila_{simulado_id}"] = ids
     session[f"rodada_acertos_{simulado_id}"] = 0
-    session[f"rodada_total_{simulado_id}"] = len(itens)
+    session[f"rodada_total_{simulado_id}"] = len(ids)
+
+    # Persiste a fila no banco para retomada caso a sessão expire
+    s.fila_json = json.dumps(ids)
+    db.session.commit()
 
     return redirect(url_for("questao", simulado_id=simulado_id))
 
@@ -249,6 +259,14 @@ def questao(simulado_id):
         return redirect(url_for("dashboard"))
 
     fila = session.get(f"fila_{simulado_id}", [])
+
+    # Sessão expirou mas há fila salva no banco → retoma de onde parou
+    if not fila and s.fila_json:
+        fila = json.loads(s.fila_json)
+        if fila:
+            session[f"fila_{simulado_id}"] = fila
+            session[f"rodada_total_{simulado_id}"] = len(fila)
+
     if not fila:
         return redirect(url_for("resultado_rodada", simulado_id=simulado_id))
 
@@ -316,11 +334,12 @@ def responder(simulado_id):
     )
     db.session.add(resp)
 
-    # Remove da fila
+    # Remove da fila e persiste no banco para retomada
     fila = session.get(f"fila_{simulado_id}", [])
     if item_id in fila:
         fila.remove(item_id)
     session[f"fila_{simulado_id}"] = fila
+    s.fila_json = json.dumps(fila)
 
     db.session.commit()
 
@@ -348,6 +367,24 @@ def responder(simulado_id):
     )
 
 
+@app.route("/simulado/<int:simulado_id>/deletar", methods=["POST"])
+@login_required
+def deletar_simulado(simulado_id):
+    s = db.session.get(Simulado, simulado_id)
+    if not s or s.usuario_id != current_user.id:
+        flash("Simulado não encontrado.", "danger")
+        return redirect(url_for("dashboard"))
+    Resposta.query.filter_by(simulado_id=simulado_id).delete()
+    SimuladoQuestao.query.filter_by(simulado_id=simulado_id).delete()
+    db.session.delete(s)
+    db.session.commit()
+    session.pop(f"fila_{simulado_id}", None)
+    session.pop(f"rodada_acertos_{simulado_id}", None)
+    session.pop(f"rodada_total_{simulado_id}", None)
+    flash("Simulado apagado.", "success")
+    return redirect(url_for("dashboard"))
+
+
 @app.route("/simulado/<int:simulado_id>/resultado-rodada")
 @login_required
 def resultado_rodada(simulado_id):
@@ -370,13 +407,14 @@ def resultado_rodada(simulado_id):
         if i.eliminada and i.acertos_seguidos == 0  # recem-eliminadas ficam com 0
     ]
 
-    # Avança o contador de rodada
+    # Avança o contador de rodada e limpa a fila persistida
     s.rodada_atual += 1
+    s.fila_json = None
     db.session.commit()
 
     concluido = itens_ativos == 0
     if concluido:
-        s.encerrado_em = datetime.utcnow()
+        s.encerrado_em = datetime.now()
         db.session.commit()
 
     return render_template(
@@ -471,6 +509,78 @@ def admin_dashboard():
     )
 
 # ---------------------------------------------------------------------------
+# Admin — Scraper
+# ---------------------------------------------------------------------------
+
+BASE_DIR = Path(__file__).parent
+SCRAPER_LOG = BASE_DIR / "scraper.log"
+_scraper_proc: dict = {"proc": None}
+
+
+@app.route("/admin/scraper", methods=["GET", "POST"])
+def admin_scraper():
+    if not session.get("admin_ok"):
+        return redirect(url_for("admin_login"))
+
+    if request.method == "POST":
+        listas = request.form.getlist("listas")
+        forcar = request.form.get("forcar") == "1"
+
+        if not listas:
+            flash("Selecione pelo menos uma lista.", "warning")
+            return redirect(url_for("admin_scraper"))
+
+        # Encerra processo anterior se ainda estiver rodando
+        proc = _scraper_proc.get("proc")
+        if proc and proc.poll() is None:
+            proc.terminate()
+
+        cmd = [sys.executable, "-u", str(BASE_DIR / "scraper_plurall.py"), "--lista"] + listas
+        if forcar:
+            cmd.append("--forcar")
+
+        log_file = open(SCRAPER_LOG, "w", encoding="utf-8")
+        usuario = request.form.get("plurall_usuario", "").strip()
+        senha   = request.form.get("plurall_senha", "").strip()
+        if not usuario or not senha:
+            flash("Informe o usuário e senha do Plurall.", "warning")
+            return redirect(url_for("admin_scraper"))
+
+        # Guarda na sessão para pré-preencher da próxima vez
+        session["plurall_usuario"] = usuario
+        session["plurall_senha"]   = senha
+
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"]  = "utf-8"
+        env["PLURALL_USUARIO"]   = usuario
+        env["PLURALL_SENHA"]     = senha
+
+        _scraper_proc["proc"] = subprocess.Popen(
+            cmd, stdout=log_file, stderr=subprocess.STDOUT,
+            cwd=str(BASE_DIR), env=env
+        )
+        _scraper_proc["log_file"] = log_file
+
+        flash(f"Importação iniciada para: {', '.join(listas)}.", "success")
+        return redirect(url_for("admin_scraper"))
+
+    log = SCRAPER_LOG.read_text(encoding="utf-8", errors="replace") if SCRAPER_LOG.exists() else ""
+    proc = _scraper_proc.get("proc")
+    rodando = proc is not None and proc.poll() is None
+    listas_db = {r[0] for r in db.session.query(Questao.lista_ph).distinct().all()}
+    listas_possiveis = sorted(listas_db | {f"PH{i:02d}" for i in range(1, 25)})
+
+    return render_template(
+        "admin_scraper.html",
+        log=log,
+        rodando=rodando,
+        listas=listas_possiveis,
+        plurall_usuario=session.get("plurall_usuario", ""),
+        plurall_senha=session.get("plurall_senha", ""),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Recuperação de senha
 # ---------------------------------------------------------------------------
 
@@ -543,6 +653,24 @@ def resetar_senha(token):
             return redirect(url_for("login"))
 
     return render_template("resetar_senha.html", token=token)
+
+# ---------------------------------------------------------------------------
+# Migração automática — adiciona colunas novas sem apagar dados existentes
+# ---------------------------------------------------------------------------
+
+def _migrar_banco():
+    with app.app_context():
+        inspector = sa_inspect(db.engine)
+        if "simulados" not in inspector.get_table_names():
+            return
+        colunas = {c["name"] for c in inspector.get_columns("simulados")}
+        with db.engine.connect() as conn:
+            if "fila_json" not in colunas:
+                conn.execute(text("ALTER TABLE simulados ADD COLUMN fila_json TEXT"))
+                conn.commit()
+                print("Migração: coluna fila_json adicionada.")
+
+_migrar_banco()
 
 # ---------------------------------------------------------------------------
 # Inicialização

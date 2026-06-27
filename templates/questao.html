@@ -46,7 +46,13 @@
           disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="respondeu">
         <span class="font-bold text-indigo-600 mt-0.5 flex-shrink-0">{{ alt.letra_exibida }})</span>
-        <span class="text-sm leading-snug">{{ alt.texto }}</span>
+        <span class="text-sm leading-snug">
+          {% if alt.texto and alt.texto.startswith('[img:') %}
+            <img src="{{ url_for('static', filename='imagens/' + alt.texto[5:-1]) }}" class="max-h-20">
+          {% else %}
+            {{ alt.texto }}
+          {% endif %}
+        </span>
       </button>
       {% endfor %}
     </div>

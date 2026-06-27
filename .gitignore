@@ -1,0 +1,25 @@
+# Banco de dados local — não sobrescrever o de produção
+instance/
+*.db
+*.sqlite
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Logs e arquivos de debug
+scraper.log
+debug_*.html
+
+# Variáveis de ambiente
+.env
+
+# Editores
+.vscode/
+*.swp

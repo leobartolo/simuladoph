@@ -12,11 +12,23 @@
           {% if correta %}Resposta correta!{% else %}Resposta incorreta{% endif %}
         </p>
         <p class="text-sm {% if correta %}text-green-600{% else %}text-red-600{% endif %}">
-          Você escolheu: <strong>{{ letra_escolhida }}) {{ texto_escolhido }}</strong>
+          Você escolheu: <strong>{{ letra_escolhida }})
+          {% if texto_escolhido and texto_escolhido.startswith('[img:') %}
+            <img src="{{ url_for('static', filename='imagens/' + texto_escolhido[5:-1]) }}" class="max-h-12 inline align-middle">
+          {% else %}
+            {{ texto_escolhido }}
+          {% endif %}
+          </strong>
         </p>
         {% if not correta %}
         <p class="text-sm text-green-700 mt-1">
-          Correta: <strong>{{ letra_correta }}) {{ texto_correto }}</strong>
+          Correta: <strong>{{ letra_correta }})
+          {% if texto_correto and texto_correto.startswith('[img:') %}
+            <img src="{{ url_for('static', filename='imagens/' + texto_correto[5:-1]) }}" class="max-h-12 inline align-middle">
+          {% else %}
+            {{ texto_correto }}
+          {% endif %}
+          </strong>
         </p>
         {% endif %}
       </div>

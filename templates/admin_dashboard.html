@@ -12,6 +12,7 @@
     <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <span class="font-bold text-lg">🔐 SimuladoPH — Admin</span>
       <div class="flex gap-4 text-sm">
+        <a href="{{ url_for('admin_scraper') }}" class="opacity-75 hover:opacity-100">📥 Importar questões</a>
         <a href="{{ url_for('dashboard') }}" class="opacity-75 hover:opacity-100">← App</a>
         <a href="{{ url_for('admin_logout') }}" class="opacity-75 hover:opacity-100">Sair</a>
       </div>
