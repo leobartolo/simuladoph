@@ -100,10 +100,14 @@ async def fazer_login(page):
         'button[type="submit"]:visible, input[type="submit"]:visible'
     ).first.click()
 
-    # Aguarda navegar para a página principal (qualquer load serve — SPA não fica idle)
+    # Aguarda chegar em atividades.plurall.net (OAuth pode ter vários redirects)
+    try:
+        await page.wait_for_url("*atividades.plurall.net*", timeout=25_000)
+    except PWTimeout:
+        pass
     await page.wait_for_load_state("load", timeout=20_000)
     await page.wait_for_timeout(2000)  # tempo para o SPA renderizar
-    print("  Login OK")
+    print(f"  Login OK — URL: {page.url}")
 
 
 # ─────────────────────────────────────────────
@@ -111,9 +115,10 @@ async def fazer_login(page):
 # ─────────────────────────────────────────────
 async def ir_para_estudo_orientado(page):
     """Navega para atividades.plurall.net e abre a aba Estudo Orientado completa."""
-    await page.goto("https://atividades.plurall.net/", wait_until="load")
+    if "atividades.plurall.net" not in page.url:
+        await page.goto("https://atividades.plurall.net/", wait_until="load")
     await page.wait_for_timeout(3000)
-    print(f"  URL pós-goto: {page.url}")
+    print(f"  URL pós-navegação: {page.url}")
 
     # Se caiu na página de login, a sessão não foi estabelecida
     if "login.plurall" in page.url or "login" in page.url.split("plurall.net")[-1]:
