@@ -112,39 +112,52 @@ async def fazer_login(page):
 async def ir_para_estudo_orientado(page):
     """Navega para atividades.plurall.net e abre a aba Estudo Orientado completa."""
     await page.goto("https://atividades.plurall.net/", wait_until="load")
-    print(f"  URL: {page.url}")
+    await page.wait_for_timeout(3000)
+    print(f"  URL pós-goto: {page.url}")
 
-    # Aguarda a aba aparecer no DOM — timeout maior para servidores lentos
-    aba_seletor = '[data-test-id="tab-Estudo-Orientado-(pHs)"]'
-    try:
-        await page.wait_for_function(
-            f"() => !!document.querySelector('{aba_seletor}')",
-            timeout=45_000
+    # Se caiu na página de login, a sessão não foi estabelecida
+    if "login.plurall" in page.url or "login" in page.url.split("plurall.net")[-1]:
+        raise RuntimeError(
+            f"Sessão não estabelecida — redirecionado para login: {page.url}\n"
+            "Verifique se as credenciais estão corretas e se a conta usa login direto (não SSO escolar)."
         )
-        print("  Aba encontrada no DOM")
-    except PWTimeout:
-        print("  ⚠ Aba não encontrou em 45s — tentando recarregar...")
-        await page.reload(wait_until="load")
+
+    # Descobre quais abas estão disponíveis para diagnóstico
+    abas_disponiveis = await page.evaluate("""() =>
+        Array.from(document.querySelectorAll('[data-test-id^="tab-"]'))
+             .map(e => e.getAttribute('data-test-id'))
+    """)
+    print(f"  Abas visíveis: {abas_disponiveis}")
+
+    # Tenta encontrar a aba PH (aceita variações de nome)
+    aba_seletor = None
+    for candidato in abas_disponiveis:
+        if "ph" in candidato.lower() or "estudo-orientado" in candidato.lower():
+            aba_seletor = f'[data-test-id="{candidato}"]'
+            print(f"  Usando aba: {candidato}")
+            break
+
+    if not aba_seletor:
+        # Fallback: aguarda até 30s pelo seletor original
+        aba_seletor = '[data-test-id="tab-Estudo-Orientado-(pHs)"]'
         try:
             await page.wait_for_function(
                 f"() => !!document.querySelector('{aba_seletor}')",
                 timeout=30_000
             )
-            print("  Aba encontrada após reload")
+            print("  Aba encontrada após espera")
         except PWTimeout:
-            dom_info = await page.evaluate("""() => ({
-                url: window.location.href,
-                title: document.title,
-                testIds: Array.from(document.querySelectorAll('[data-test-id]'))
-                             .map(e => e.getAttribute('data-test-id')).slice(0, 20),
-            })""")
-            print(f"  ⚠ Aba ainda não encontrada: {dom_info}")
+            raise RuntimeError(
+                f"Aba 'Estudo Orientado (pHs)' não encontrada. "
+                f"Abas disponíveis: {abas_disponiveis}\n"
+                "Use --inspecionar para ver o que aparece na página."
+            )
 
     # Clica na aba
-    await page.evaluate("""() => {
-        const tab = document.querySelector('[data-test-id="tab-Estudo-Orientado-(pHs)"]');
+    await page.evaluate(f"""() => {{
+        const tab = document.querySelector('{aba_seletor}');
         if (tab) tab.click();
-    }""")
+    }}""")
 
     # Aguarda os cards aparecerem (não usa wait fixo)
     try:
