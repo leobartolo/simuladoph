@@ -23,7 +23,7 @@ except ImportError:
 # Importa o app e os models para usar o contexto Flask
 sys.path.insert(0, str(Path(__file__).parent))
 from app import app, db
-from models import Questao, Alternativa
+from models import Questao, Alternativa, SimuladoQuestao, Resposta
 
 XLSX = Path(__file__).parent / "questoes.xlsx"
 LETRAS_VALIDAS = {"A", "B", "C", "D"}
@@ -46,8 +46,10 @@ def importar():
     with app.app_context():
         db.create_all()
 
-        # Limpa só as tabelas de questões
+        # Limpa na ordem correta para respeitar FKs do PostgreSQL
         print("Limpando tabelas de questões...")
+        Resposta.query.delete()
+        SimuladoQuestao.query.delete()
         Alternativa.query.delete()
         Questao.query.delete()
         db.session.commit()
