@@ -79,6 +79,19 @@
       </div>
     </div>
 
+    <!-- Embaralhar alternativas -->
+    <div class="bg-white rounded-2xl p-4 shadow-sm">
+      <label class="flex items-center gap-3 cursor-pointer">
+        <input type="hidden" name="embaralhar_alternativas" value="0">
+        <input type="checkbox" name="embaralhar_alternativas" value="1" checked
+          class="w-4 h-4 accent-indigo-600">
+        <div>
+          <p class="text-sm font-semibold">Embaralhar alternativas</p>
+          <p class="text-xs text-slate-500">A ordem das alternativas muda a cada rodada</p>
+        </div>
+      </label>
+    </div>
+
     <button type="submit"
       class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition text-base">
       Gerar Simulado →

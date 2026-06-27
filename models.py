@@ -54,6 +54,7 @@ class Simulado(db.Model):
     criado_em = db.Column(db.DateTime, default=datetime.now)
     encerrado_em = db.Column(db.DateTime, nullable=True)
 
+    embaralhar_alternativas = db.Column(db.Boolean, default=True, nullable=False, server_default="1")
     fila_json = db.Column(db.Text, nullable=True)   # IDs da fila atual (JSON) para retomada
     itens = db.relationship("SimuladoQuestao", backref="simulado", lazy=True)
 

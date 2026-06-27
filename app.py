@@ -172,19 +172,22 @@ def novo_simulado():
 
         dificuldade = int(request.form.get("dificuldade", 3))
         dificuldade = max(1, min(4, dificuldade))  # garante 1-4
+        embaralhar = request.form.get("embaralhar_alternativas") != "0"
 
         simulado = Simulado(
             usuario_id=current_user.id,
             listas=",".join(listas),
             disciplinas=",".join(disciplinas),
             acertos_para_eliminar=dificuldade,
+            embaralhar_alternativas=embaralhar,
         )
         db.session.add(simulado)
         db.session.flush()   # pega o id antes do commit
 
         for q in sorteadas:
             ordem = LETRAS[:]
-            random.shuffle(ordem)
+            if embaralhar:
+                random.shuffle(ordem)
             sq = SimuladoQuestao(simulado_id=simulado.id, questao_id=q.id)
             sq.set_ordem(ordem)
             db.session.add(sq)
@@ -232,10 +235,11 @@ def rodada(simulado_id):
         db.session.commit()
         return redirect(url_for("resultado_final", simulado_id=simulado_id))
 
-    # Reembaralha as alternativas a cada nova rodada
+    # Reembaralha as alternativas a cada nova rodada (se configurado)
     for item in itens:
         ordem = LETRAS[:]
-        random.shuffle(ordem)
+        if s.embaralhar_alternativas:
+            random.shuffle(ordem)
         item.set_ordem(ordem)
     db.session.commit()
 
@@ -730,6 +734,10 @@ def _migrar_banco():
                 conn.execute(text("ALTER TABLE simulados ADD COLUMN fila_json TEXT"))
                 conn.commit()
                 print("Migração: coluna fila_json adicionada.")
+            if "embaralhar_alternativas" not in colunas:
+                conn.execute(text("ALTER TABLE simulados ADD COLUMN embaralhar_alternativas BOOLEAN NOT NULL DEFAULT TRUE"))
+                conn.commit()
+                print("Migração: coluna embaralhar_alternativas adicionada.")
 
 _migrar_banco()
 

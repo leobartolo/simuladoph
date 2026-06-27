@@ -78,6 +78,7 @@
             <th class="text-left px-4 py-3 font-semibold text-slate-500">Matérias</th>
             <th class="text-center px-4 py-3 font-semibold text-slate-500">Questões</th>
             <th class="text-center px-4 py-3 font-semibold text-slate-500">Rodadas</th>
+            <th class="text-center px-4 py-3 font-semibold text-slate-500">Alt.</th>
             <th class="text-center px-4 py-3 font-semibold text-slate-500">Status</th>
             <th class="text-left px-4 py-3 font-semibold text-slate-500">Data</th>
           </tr>
@@ -90,6 +91,13 @@
             <td class="px-4 py-3 text-slate-500 text-xs">{{ s.disciplinas }}</td>
             <td class="px-4 py-3 text-center">{{ s.itens|length }}</td>
             <td class="px-4 py-3 text-center">{{ s.rodada_atual - 1 }}</td>
+            <td class="px-4 py-3 text-center text-xs">
+              {% if s.embaralhar_alternativas %}
+                <span title="Alternativas embaralhadas">🔀</span>
+              {% else %}
+                <span class="text-slate-300" title="Alternativas fixas">—</span>
+              {% endif %}
+            </td>
             <td class="px-4 py-3 text-center">
               {% if s.encerrado_em %}
                 <span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">✅ Concluído</span>
