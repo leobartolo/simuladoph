@@ -26,9 +26,6 @@ import unicodedata
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-# Garante que o Playwright acha o Chromium no mesmo path usado no build
-_BROWSERS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".playwright-browsers")
-os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", _BROWSERS_PATH)
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
