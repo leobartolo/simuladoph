@@ -475,6 +475,43 @@ def admin_login():
         flash("Senha incorreta.", "danger")
     return render_template("admin_login.html")
 
+@app.route("/admin/usuario/<int:uid>/senha", methods=["POST"])
+def admin_mudar_senha(uid):
+    if not session.get("admin_ok"):
+        return redirect(url_for("admin_login"))
+    u = db.session.get(Usuario, uid)
+    if not u:
+        flash("Usuário não encontrado.", "warning")
+        return redirect(url_for("admin_dashboard"))
+    nova = request.form.get("nova_senha", "").strip()
+    if len(nova) < 4:
+        flash("Senha deve ter ao menos 4 caracteres.", "warning")
+        return redirect(url_for("admin_dashboard"))
+    u.senha_hash = generate_password_hash(nova)
+    db.session.commit()
+    flash(f"Senha de {u.nome} alterada.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/usuario/<int:uid>/deletar", methods=["POST"])
+def admin_deletar_usuario(uid):
+    if not session.get("admin_ok"):
+        return redirect(url_for("admin_login"))
+    u = db.session.get(Usuario, uid)
+    if not u:
+        flash("Usuário não encontrado.", "warning")
+        return redirect(url_for("admin_dashboard"))
+    sims = Simulado.query.filter_by(usuario_id=uid).all()
+    for s in sims:
+        Resposta.query.filter_by(simulado_id=s.id).delete()
+        SimuladoQuestao.query.filter_by(simulado_id=s.id).delete()
+        db.session.delete(s)
+    db.session.delete(u)
+    db.session.commit()
+    flash(f"Usuário {u.nome} excluído.", "success")
+    return redirect(url_for("admin_dashboard"))
+
+
 @app.route("/admin/logout")
 def admin_logout():
     session.pop("admin_ok", None)

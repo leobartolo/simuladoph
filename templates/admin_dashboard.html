@@ -40,8 +40,8 @@
 
     <!-- Usuários -->
     <h2 class="text-lg font-bold mb-3">👥 Usuários</h2>
-    <div class="bg-white rounded-2xl shadow-sm overflow-hidden mb-8">
-      <table class="w-full text-sm">
+    <div class="bg-white rounded-2xl shadow-sm overflow-x-auto mb-8">
+      <table class="w-full text-sm whitespace-nowrap">
         <thead class="bg-slate-50 border-b border-slate-100">
           <tr>
             <th class="text-left px-4 py-3 font-semibold text-slate-500">Nome</th>
@@ -50,18 +50,61 @@
             <th class="text-center px-4 py-3 font-semibold text-slate-500">Concluídos</th>
             <th class="text-center px-4 py-3 font-semibold text-slate-500">Respostas</th>
             <th class="text-left px-4 py-3 font-semibold text-slate-500">Cadastro</th>
+            <th class="text-center px-4 py-3 font-semibold text-slate-500">Ações</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-50">
+        <tbody class="divide-y divide-slate-100">
           {% for r in resumo %}
-          <tr class="hover:bg-slate-50">
-            <td class="px-4 py-3 font-medium">{{ r.usuario.nome }}</td>
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="px-4 py-3 font-semibold">{{ r.usuario.nome }}</td>
             <td class="px-4 py-3 text-slate-500">{{ r.usuario.email }}</td>
             <td class="px-4 py-3 text-center">{{ r.total_sims }}</td>
             <td class="px-4 py-3 text-center text-green-600 font-semibold">{{ r.concluidos }}</td>
             <td class="px-4 py-3 text-center">{{ r.total_respostas }}</td>
             <td class="px-4 py-3 text-slate-400 text-xs">{{ r.usuario.criado_em.strftime('%d/%m/%Y') }}</td>
+            <td class="px-4 py-3 text-center">
+              <div class="flex items-center justify-center gap-2">
+
+                <!-- Mudar senha -->
+                <button onclick="document.getElementById('modal-senha-{{ r.usuario.id }}').classList.remove('hidden')"
+                  class="text-xs bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-700 px-2 py-1 rounded-lg transition font-medium">
+                  🔑 Senha
+                </button>
+
+                <!-- Excluir -->
+                <form method="POST" action="{{ url_for('admin_deletar_usuario', uid=r.usuario.id) }}"
+                  onsubmit="return confirm('Excluir {{ r.usuario.nome }}? Isso apaga todos os simulados e respostas desse usuário.')">
+                  <button type="submit"
+                    class="text-xs bg-slate-100 hover:bg-red-100 text-slate-600 hover:text-red-600 px-2 py-1 rounded-lg transition font-medium">
+                    🗑 Excluir
+                  </button>
+                </form>
+              </div>
+            </td>
           </tr>
+
+          <!-- Modal mudar senha -->
+          <tr id="modal-senha-{{ r.usuario.id }}" class="hidden bg-indigo-50">
+            <td colspan="7" class="px-4 py-3">
+              <form method="POST" action="{{ url_for('admin_mudar_senha', uid=r.usuario.id) }}"
+                class="flex items-center gap-3">
+                <span class="text-sm font-medium text-indigo-700">Nova senha para {{ r.usuario.nome }}:</span>
+                <input type="password" name="nova_senha" required minlength="4"
+                  class="border border-indigo-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  placeholder="mínimo 4 caracteres">
+                <button type="submit"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition">
+                  Salvar
+                </button>
+                <button type="button"
+                  onclick="document.getElementById('modal-senha-{{ r.usuario.id }}').classList.add('hidden')"
+                  class="text-xs text-slate-500 hover:text-slate-700">
+                  Cancelar
+                </button>
+              </form>
+            </td>
+          </tr>
+
           {% endfor %}
         </tbody>
       </table>
@@ -87,9 +130,11 @@
           {% for s in simulados %}
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="px-4 py-3 font-semibold">{{ s.usuario.nome }}</td>
-            <td class="px-4 py-3">
-              {% for lista in s.listas.split(',') %}
-              <span class="inline-block bg-indigo-50 text-indigo-600 text-xs font-medium px-1.5 py-0.5 rounded mr-0.5">{{ lista }}</span>
+            <td class="px-4 py-3 whitespace-normal max-w-xs">
+              {% set listas_list = s.listas.split(',') %}
+              {% for lista in listas_list %}
+                <span class="inline-block bg-indigo-50 text-indigo-600 text-xs font-medium px-1.5 py-0.5 rounded mr-0.5 mb-0.5">{{ lista }}</span>
+                {% if loop.index % 5 == 0 and not loop.last %}<br>{% endif %}
               {% endfor %}
             </td>
             <td class="px-4 py-3 text-slate-500 text-xs">{{ s.disciplinas.replace(',', ' · ') }}</td>
