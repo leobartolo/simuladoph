@@ -509,12 +509,37 @@ def admin_dashboard():
     )
 
 # ---------------------------------------------------------------------------
-# Admin — Scraper
+# Admin — Scraper / Importar Excel
 # ---------------------------------------------------------------------------
 
 BASE_DIR = Path(__file__).parent
 SCRAPER_LOG = BASE_DIR / "scraper.log"
+IMPORT_LOG  = BASE_DIR / "import.log"
 _scraper_proc: dict = {"proc": None}
+_import_proc:  dict = {"proc": None}
+
+
+@app.route("/admin/importar-excel", methods=["POST"])
+def admin_importar_excel():
+    if not session.get("admin_ok"):
+        return redirect(url_for("admin_login"))
+
+    proc = _import_proc.get("proc")
+    if proc and proc.poll() is None:
+        flash("Importação já em andamento.", "warning")
+        return redirect(url_for("admin_scraper"))
+
+    log_file = open(IMPORT_LOG, "w", encoding="utf-8")
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
+    _import_proc["proc"] = subprocess.Popen(
+        [sys.executable, "-u", str(BASE_DIR / "importar_questoes.py")],
+        stdout=log_file, stderr=subprocess.STDOUT,
+        cwd=str(BASE_DIR), env=env,
+    )
+    _import_proc["log_file"] = log_file
+    flash("Importando Excel → banco...", "success")
+    return redirect(url_for("admin_scraper"))
 
 
 @app.route("/admin/scraper", methods=["GET", "POST"])
@@ -565,15 +590,20 @@ def admin_scraper():
         return redirect(url_for("admin_scraper"))
 
     log = SCRAPER_LOG.read_text(encoding="utf-8", errors="replace") if SCRAPER_LOG.exists() else ""
+    import_log = IMPORT_LOG.read_text(encoding="utf-8", errors="replace") if IMPORT_LOG.exists() else ""
     proc = _scraper_proc.get("proc")
     rodando = proc is not None and proc.poll() is None
+    imp_proc = _import_proc.get("proc")
+    importando = imp_proc is not None and imp_proc.poll() is None
     listas_db = {r[0] for r in db.session.query(Questao.lista_ph).distinct().all()}
     listas_possiveis = sorted(listas_db | {f"PH{i:02d}" for i in range(1, 25)})
 
     return render_template(
         "admin_scraper.html",
         log=log,
+        import_log=import_log,
         rodando=rodando,
+        importando=importando,
         listas=listas_possiveis,
         plurall_usuario=session.get("plurall_usuario", ""),
         plurall_senha=session.get("plurall_senha", ""),

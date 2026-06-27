@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Importar Questões — SimuladoPH Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  {% if rodando %}
+  {% if rodando or importando %}
   <meta http-equiv="refresh" content="4">
   {% endif %}
 </head>
@@ -86,7 +86,27 @@
       </form>
     </div>
 
-    <!-- Log -->
+    <!-- Importar Excel → Banco -->
+    <div class="bg-white rounded-2xl shadow-sm p-6">
+      <h2 class="text-lg font-bold mb-1">Carregar Excel → Banco</h2>
+      <p class="text-sm text-slate-500 mb-4">
+        Use após rodar o scraper localmente e atualizar o <code>questoes.xlsx</code>.
+        Não precisa do Plurall nem do Chromium.
+      </p>
+      <form method="POST" action="{{ url_for('admin_importar_excel') }}">
+        <button type="submit"
+          class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2.5 rounded-xl transition
+            {% if importando %}opacity-50 cursor-not-allowed{% endif %}"
+          {% if importando %}disabled{% endif %}>
+          {% if importando %}⏳ Importando...{% else %}📥 Carregar Excel → Banco{% endif %}
+        </button>
+      </form>
+      {% if import_log %}
+      <pre class="mt-4 bg-slate-900 text-green-300 text-xs rounded-xl p-4 overflow-auto max-h-60 whitespace-pre-wrap font-mono">{{ import_log }}</pre>
+      {% endif %}
+    </div>
+
+    <!-- Log scraper -->
     <div class="bg-white rounded-2xl shadow-sm p-6">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-lg font-bold">Log de execução</h2>
