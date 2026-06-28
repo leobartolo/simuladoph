@@ -51,14 +51,14 @@ def main():
             listas.append(arg)
     msg = f"update questoes.xlsx: {', '.join(listas)}" if listas else "update questoes.xlsx"
 
-    run(["git", "add", str(BASE / "questoes.xlsx")], cwd=BASE)
+    run(["git", "add", str(BASE / "questoes.xlsx"), str(BASE / "static" / "imagens")], cwd=BASE)
     r = run(["git", "diff", "--cached", "--quiet"], cwd=BASE)
     if r.returncode == 0:
-        print("  (sem mudanças no Excel — nada para commitar)", flush=True)
+        print("  (sem mudanças — nada para commitar)", flush=True)
     else:
         run(["git", "commit", "-m", msg], cwd=BASE)
         run(["git", "push"], cwd=BASE)
-        print("\n✓ Excel publicado. Acesse o admin no Render e clique em", flush=True)
+        print("\n✓ Publicado. Acesse o admin no Render e clique em", flush=True)
         print('  "Carregar Excel → Banco" para atualizar a produção.', flush=True)
 
     print("\n=== Concluído ===", flush=True)
