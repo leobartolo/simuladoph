@@ -510,12 +510,27 @@ async def scrape_disciplina(page, lista_id: str, disciplina: str, tarefa_url: st
 # ─────────────────────────────────────────────
 # Excel
 # ─────────────────────────────────────────────
+def _col_lista(ws) -> int:
+    """Índice 0-based da coluna 'Lista' no Excel (varia se tem ou não coluna E)."""
+    header = [ws.cell(1, c).value for c in range(1, 13)]
+    for i, h in enumerate(header):
+        if str(h or "").strip().upper() == "LISTA":
+            return i
+    tem_e = len(header) > 5 and str(header[5] or "").strip().upper() == "E"
+    return 8 if tem_e else 7
+
+
 def listas_no_excel() -> set[str]:
     if not XLSX_PATH.exists():
         return set()
     wb = load_workbook(XLSX_PATH, data_only=True)
     ws = wb["Questões"] if "Questões" in wb.sheetnames else wb.active
-    return {str(row[7]).strip() for row in ws.iter_rows(min_row=2, values_only=True) if row and row[7]}
+    col = _col_lista(ws)
+    return {
+        str(row[col]).strip()
+        for row in ws.iter_rows(min_row=2, values_only=True)
+        if row and len(row) > col and row[col]
+    }
 
 
 def remover_lista_excel(lista_id: str):
@@ -524,9 +539,10 @@ def remover_lista_excel(lista_id: str):
         return
     wb = load_workbook(XLSX_PATH)
     ws = wb["Questões"] if "Questões" in wb.sheetnames else wb.active
+    col = _col_lista(ws)
     linhas_remover = [
         row[0].row for row in ws.iter_rows(min_row=2)
-        if row[7].value and str(row[7].value).strip() == lista_id
+        if row[col].value and str(row[col].value).strip() == lista_id
     ]
     for row_num in reversed(linhas_remover):
         ws.delete_rows(row_num)
