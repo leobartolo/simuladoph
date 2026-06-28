@@ -45,9 +45,14 @@ login_manager.login_message_category = "warning"
 LETRAS = ["A", "B", "C", "D", "E"]
 
 
+_IMG_DIR = Path(__file__).parent / "static" / "imagens"
+
+
 @app.template_filter("enunciado_html")
 def enunciado_html_filter(text):
-    """Renderiza [img:filename] dentro do enunciado como tags <img>."""
+    """Renderiza [img:filename] dentro do enunciado como tags <img>.
+    Imagens > 6 KB são exibidas como figuras centralizadas;
+    imagens menores são notações inline (α, β, x̂ etc.)."""
     if not text:
         return markupsafe.Markup("")
     parts = re.split(r"(\[img:[^\]]+\])", text)
@@ -55,11 +60,21 @@ def enunciado_html_filter(text):
     for part in parts:
         m = re.match(r"\[img:([^\]]+)\]", part)
         if m:
-            img_url = url_for("static", filename=f"imagens/{m.group(1)}")
-            result.append(
-                f'<img src="{img_url}" '
-                f'class="max-h-32 inline-block align-middle rounded my-1 mx-1">'
-            )
+            filename = m.group(1)
+            img_path = _IMG_DIR / filename
+            size = img_path.stat().st_size if img_path.exists() else 0
+            img_url = url_for("static", filename=f"imagens/{filename}")
+            if size > 6000:
+                result.append(
+                    f'<img src="{img_url}" '
+                    f'class="block max-w-full max-h-72 mx-auto my-4 '
+                    f'rounded-lg border border-slate-100">'
+                )
+            else:
+                result.append(
+                    f'<img src="{img_url}" '
+                    f'class="max-h-7 inline-block align-middle mx-0.5">'
+                )
         else:
             result.append(str(markupsafe.escape(part)))
     return markupsafe.Markup("".join(result))
