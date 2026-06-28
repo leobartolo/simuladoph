@@ -40,7 +40,7 @@ login_manager.login_view = "login"
 login_manager.login_message = "Faça login para continuar."
 login_manager.login_message_category = "warning"
 
-LETRAS = ["A", "B", "C", "D"]
+LETRAS = ["A", "B", "C", "D", "E"]
 # threshold de acertos definido por simulado (vem do campo acertos_para_eliminar)
 
 
@@ -183,11 +183,11 @@ def novo_simulado():
         db.session.flush()   # pega o id antes do commit
 
         for q in sorteadas:
-            ordem = LETRAS[:]
+            letras_q = [l for l in LETRAS if q.alt_dict().get(l)]
             if embaralhar:
-                random.shuffle(ordem)
+                random.shuffle(letras_q)
             sq = SimuladoQuestao(simulado_id=simulado.id, questao_id=q.id)
-            sq.set_ordem(ordem)
+            sq.set_ordem(letras_q)
             db.session.add(sq)
 
         db.session.commit()
@@ -235,10 +235,10 @@ def rodada(simulado_id):
 
     # Reembaralha as alternativas a cada nova rodada (se configurado)
     for item in itens:
-        ordem = LETRAS[:]
+        letras_q = [l for l in LETRAS if item.questao.alt_dict().get(l)]
         if s.embaralhar_alternativas:
-            random.shuffle(ordem)
-        item.set_ordem(ordem)
+            random.shuffle(letras_q)
+        item.set_ordem(letras_q)
     db.session.commit()
 
     ids = [i.id for i in itens]
@@ -278,10 +278,10 @@ def questao(simulado_id):
 
     # Monta as alternativas na ordem embaralhada
     alt_dict = q.alt_dict()
-    ordem = item.get_ordem()   # ["C","A","D","B"] — letras ORIGINAIS embaralhadas
+    ordem = item.get_ordem()   # ["C","A","D","B"] ou ["C","A","D","B","E"] — letras ORIGINAIS
     alternativas_exibidas = [
         {"letra_exibida": LETRAS[i], "texto": alt_dict[ordem[i]]}
-        for i in range(4)
+        for i in range(len(ordem))
     ]
 
     total = session.get(f"rodada_total_{simulado_id}", len(fila))
@@ -350,7 +350,8 @@ def responder(simulado_id):
     ordem = item.get_ordem()
 
     def texto_de(letra_exibida):
-        idx = LETRAS.index(letra_exibida)
+        letras_exibidas = LETRAS[:len(ordem)]
+        idx = letras_exibidas.index(letra_exibida)
         return alt_dict[ordem[idx]]
 
     return render_template(
