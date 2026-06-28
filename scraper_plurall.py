@@ -115,8 +115,10 @@ async def fazer_login(page):
 # ─────────────────────────────────────────────
 async def ir_para_estudo_orientado(page):
     """Navega para atividades.plurall.net e abre a aba Estudo Orientado completa."""
-    if "atividades.plurall.net" not in page.url:
-        await page.goto("https://atividades.plurall.net/", wait_until="load")
+    # Navega para a raiz a menos que já esteja nela (evita colisão com redirects OAuth)
+    raiz = "https://atividades.plurall.net"
+    if page.url.rstrip("/") != raiz:
+        await page.goto(raiz + "/", wait_until="load")
     await page.wait_for_timeout(3000)
     print(f"  URL pós-navegação: {page.url}")
 
