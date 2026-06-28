@@ -80,7 +80,7 @@
         <img src="{{ url_for('static', filename='imagens/' + q.imagem) }}"
           class="max-h-48 rounded-lg mb-3 border border-slate-100">
         {% endif %}
-        <p class="text-sm leading-relaxed mb-4 whitespace-pre-wrap">{{ q.enunciado }}</p>
+        <p class="text-sm leading-relaxed mb-4 whitespace-pre-wrap">{{ q.enunciado | enunciado_html }}</p>
 
         <!-- Alternativas -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">

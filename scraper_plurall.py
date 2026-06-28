@@ -279,41 +279,14 @@ async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int, 
 
     print(f"    [{num}] {page.url}")
 
-    # ── Enunciado ────────────────────────────────────────────────────────────
-    # Seletor confirmado pelo HTML real: class contém "question-text"
+    # ── Enunciado + imagens inline ────────────────────────────────────────────
+    # Processa o innerHTML: cada <img> é baixada e substituída por [img:filename]
+    # no texto. Isso preserva notações matemáticas inline (∠, △ etc.) e figuras.
     enunciado = ""
+    imagem_filename = ""  # mantido por compatibilidade com questões antigas
+
     el = page.locator('[class*="question-text"]').first
     if await el.count():
-        enunciado = (await el.inner_text()).strip()
-
-    # ── Imagem ───────────────────────────────────────────────────────────────
-    # Baixa TODAS as imagens do enunciado e fica com a maior (símbolos inline
-    # são minúsculos; a figura principal é a maior).
-    imagem_filename = ""
-    img_els = page.locator('[class*="question-text"] img')
-    img_count = await img_els.count()
-
-    melhor_bytes: bytes = b""
-    melhor_ext = ".png"
-
-    for img_i in range(img_count):
-        src = await img_els.nth(img_i).get_attribute("src") or ""
-        if not src or src.startswith("data:"):
-            continue
-        parsed_path = urlparse(src).path
-        ext = Path(parsed_path).suffix.lower()
-        if not ext or ext not in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"):
-            ext = ".png"
-        try:
-            response = await asyncio.wait_for(page.request.get(src), timeout=15)
-            body = await response.body()
-            if len(body) > len(melhor_bytes):
-                melhor_bytes = body
-                melhor_ext = ext
-        except Exception as e:
-            print(f"      ⚠ erro imagem {img_i}: {e}")
-
-    if len(melhor_bytes) >= 100:
         img_prefix = f"{turma[:2]}_" if turma != "7ano" else ""
         num_lista = lista_id.replace("PH", "").zfill(2)
         disc_raw = norm_disc(disciplina)[:3].lower()
@@ -321,12 +294,59 @@ async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int, 
             c for c in unicodedata.normalize("NFKD", disc_raw)
             if not unicodedata.combining(c)
         )
-        filename = f"{img_prefix}ph{num_lista}_{disc_abrev}_{num:02d}{melhor_ext}"
-        dest = IMG_DIR / filename
-        IMG_DIR.mkdir(parents=True, exist_ok=True)
-        dest.write_bytes(melhor_bytes)
-        imagem_filename = filename
-        print(f"      → imagem: {filename} ({len(melhor_bytes)} bytes)")
+
+        # Substitui cada <img> por um marcador de texto e coleta os srcs
+        imgs_info = await page.evaluate("""() => {
+            const el = document.querySelector('[class*="question-text"]');
+            if (!el) return {text: '', imgs: []};
+            const clone = el.cloneNode(true);
+            const imgs = [];
+            let idx = 0;
+            clone.querySelectorAll('img').forEach(img => {
+                const src = img.getAttribute('src') || '';
+                imgs.push({idx, src});
+                img.replaceWith(new Text('<<IMG' + idx + '>>'));
+                idx++;
+            });
+            return {text: (clone.innerText || clone.textContent).trim(), imgs};
+        }""")
+
+        raw_text = imgs_info["text"]
+
+        for img_info in imgs_info["imgs"]:
+            src   = img_info["src"]
+            idx   = img_info["idx"]
+            marker = f"<<IMG{idx}>>"
+
+            if not src or src.startswith("data:"):
+                raw_text = raw_text.replace(marker, "")
+                continue
+
+            parsed_path = urlparse(src).path
+            ext = Path(parsed_path).suffix.lower()
+            if ext not in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"):
+                ext = ".png"
+
+            suffix = f"_t{idx}" if idx > 0 else ""
+            filename = f"{img_prefix}ph{num_lista}_{disc_abrev}_{num:02d}{suffix}{ext}"
+            dest = IMG_DIR / filename
+            IMG_DIR.mkdir(parents=True, exist_ok=True)
+
+            try:
+                response = await asyncio.wait_for(page.request.get(src), timeout=15)
+                body = await response.body()
+                if len(body) >= 100:
+                    dest.write_bytes(body)
+                    raw_text = raw_text.replace(marker, f"[img:{filename}]")
+                    print(f"      → img {idx}: {filename} ({len(body)} bytes)")
+                else:
+                    raw_text = raw_text.replace(marker, "")
+                    print(f"      ⚠ img {idx} vazia ({len(body)} bytes), ignorando")
+            except Exception as e:
+                raw_text = raw_text.replace(marker, "")
+                print(f"      ⚠ erro img {idx}: {e}")
+
+        enunciado = raw_text
 
     # ── Alternativas e Gabarito ───────────────────────────────────────────────
     # Estrutura confirmada pelo HTML:

@@ -1,11 +1,13 @@
 import os
 import json
+import re
 import random
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
+import markupsafe
 from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -41,7 +43,26 @@ login_manager.login_message = "Faça login para continuar."
 login_manager.login_message_category = "warning"
 
 LETRAS = ["A", "B", "C", "D", "E"]
-# threshold de acertos definido por simulado (vem do campo acertos_para_eliminar)
+
+
+@app.template_filter("enunciado_html")
+def enunciado_html_filter(text):
+    """Renderiza [img:filename] dentro do enunciado como tags <img>."""
+    if not text:
+        return markupsafe.Markup("")
+    parts = re.split(r"(\[img:[^\]]+\])", text)
+    result = []
+    for part in parts:
+        m = re.match(r"\[img:([^\]]+)\]", part)
+        if m:
+            img_url = url_for("static", filename=f"imagens/{m.group(1)}")
+            result.append(
+                f'<img src="{img_url}" '
+                f'class="max-h-32 inline-block align-middle rounded my-1 mx-1">'
+            )
+        else:
+            result.append(str(markupsafe.escape(part)))
+    return markupsafe.Markup("".join(result))
 
 
 @login_manager.user_loader
