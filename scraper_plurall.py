@@ -287,43 +287,46 @@ async def extrair_questao_atual(page, lista_id: str, disciplina: str, num: int, 
         enunciado = (await el.inner_text()).strip()
 
     # ── Imagem ───────────────────────────────────────────────────────────────
-    # Imagem fica dentro do bloco question-text
+    # Baixa TODAS as imagens do enunciado e fica com a maior (símbolos inline
+    # são minúsculos; a figura principal é a maior).
     imagem_filename = ""
-    img_el = page.locator('[class*="question-text"] img').first
-    if await img_el.count():
-        src = await img_el.get_attribute("src") or ""
-        if src and not src.startswith("data:"):
-            # Extrai extensão da parte do path (ignora query string)
-            parsed_path = urlparse(src).path
-            ext = Path(parsed_path).suffix.lower()
-            # Fórmulas matemáticas servidas via PHP — trata como PNG
-            if not ext or ext not in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"):
-                ext = ".png"
+    img_els = page.locator('[class*="question-text"] img')
+    img_count = await img_els.count()
 
-            # Nome do arquivo sem acentos (Ciências → cie, etc.)
-            img_prefix = f"{turma[:2]}_" if turma != "7ano" else ""
-            num_lista = lista_id.replace("PH", "").zfill(2)
-            disc_raw = norm_disc(disciplina)[:3].lower()
-            disc_abrev = "".join(
-                c for c in unicodedata.normalize("NFKD", disc_raw)
-                if not unicodedata.combining(c)
-            )
-            filename = f"{img_prefix}ph{num_lista}_{disc_abrev}_{num:02d}{ext}"
-            dest = IMG_DIR / filename
-            IMG_DIR.mkdir(parents=True, exist_ok=True)
-            try:
-                response = await asyncio.wait_for(
-                    page.request.get(src), timeout=15
-                )
-                body = await response.body()
-                if len(body) < 100:
-                    print(f"      ⚠ imagem vazia ({len(body)} bytes), ignorando")
-                else:
-                    dest.write_bytes(body)
-                    imagem_filename = filename
-                    print(f"      → imagem: {filename} ({len(body)} bytes)")
-            except Exception as e:
-                print(f"      ⚠ erro imagem: {e}")
+    melhor_bytes: bytes = b""
+    melhor_ext = ".png"
+
+    for img_i in range(img_count):
+        src = await img_els.nth(img_i).get_attribute("src") or ""
+        if not src or src.startswith("data:"):
+            continue
+        parsed_path = urlparse(src).path
+        ext = Path(parsed_path).suffix.lower()
+        if not ext or ext not in (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"):
+            ext = ".png"
+        try:
+            response = await asyncio.wait_for(page.request.get(src), timeout=15)
+            body = await response.body()
+            if len(body) > len(melhor_bytes):
+                melhor_bytes = body
+                melhor_ext = ext
+        except Exception as e:
+            print(f"      ⚠ erro imagem {img_i}: {e}")
+
+    if len(melhor_bytes) >= 100:
+        img_prefix = f"{turma[:2]}_" if turma != "7ano" else ""
+        num_lista = lista_id.replace("PH", "").zfill(2)
+        disc_raw = norm_disc(disciplina)[:3].lower()
+        disc_abrev = "".join(
+            c for c in unicodedata.normalize("NFKD", disc_raw)
+            if not unicodedata.combining(c)
+        )
+        filename = f"{img_prefix}ph{num_lista}_{disc_abrev}_{num:02d}{melhor_ext}"
+        dest = IMG_DIR / filename
+        IMG_DIR.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(melhor_bytes)
+        imagem_filename = filename
+        print(f"      → imagem: {filename} ({len(melhor_bytes)} bytes)")
 
     # ── Alternativas e Gabarito ───────────────────────────────────────────────
     # Estrutura confirmada pelo HTML:
