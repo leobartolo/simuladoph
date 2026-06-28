@@ -183,7 +183,7 @@ def novo_simulado():
         db.session.flush()   # pega o id antes do commit
 
         for q in sorteadas:
-            letras_q = [l for l in LETRAS if q.alt_dict().get(l)]
+            letras_q = [l for l in LETRAS if q.alt_dict().get(l)] or ["A","B","C","D"]
             if embaralhar:
                 random.shuffle(letras_q)
             sq = SimuladoQuestao(simulado_id=simulado.id, questao_id=q.id)
@@ -235,7 +235,7 @@ def rodada(simulado_id):
 
     # Reembaralha as alternativas a cada nova rodada (se configurado)
     for item in itens:
-        letras_q = [l for l in LETRAS if item.questao.alt_dict().get(l)]
+        letras_q = [l for l in LETRAS if item.questao.alt_dict().get(l)] or ["A","B","C","D"]
         if s.embaralhar_alternativas:
             random.shuffle(letras_q)
         item.set_ordem(letras_q)

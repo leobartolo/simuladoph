@@ -80,9 +80,7 @@ class SimuladoQuestao(db.Model):
     def get_ordem(self):
         if self.ordem_alternativas:
             return self.ordem_alternativas.split(",")
-        # Fallback: usa as letras que a questão tem de fato
-        letras = [a.letra for a in sorted(self.questao.alternativas, key=lambda a: a.letra)]
-        return letras or ["A", "B", "C", "D"]
+        return ["A", "B", "C", "D"]
 
     def letra_correta_embaralhada(self):
         """Retorna a letra (A-E) que aparece na tela correspondente ao gabarito real."""
