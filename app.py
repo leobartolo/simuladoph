@@ -336,8 +336,10 @@ def responder(simulado_id):
     )
     db.session.add(resp)
 
-    # Remove da fila e persiste no banco para retomada
+    # Remove da fila — recupera do banco se a sessão foi perdida (cookie grande)
     fila = session.get(f"fila_{simulado_id}", [])
+    if not fila and s.fila_json:
+        fila = json.loads(s.fila_json)
     if item_id in fila:
         fila.remove(item_id)
     session[f"fila_{simulado_id}"] = fila
