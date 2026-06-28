@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Importar Questões — SimuladoPH Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  {% if rodando or importando %}
-  <meta http-equiv="refresh" content="4">
-  {% endif %}
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800">
 
@@ -124,13 +121,12 @@
     <div class="bg-white rounded-2xl shadow-sm p-6">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-lg font-bold">Log de execução</h2>
-        {% if rodando %}
-        <span class="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-1 rounded-full animate-pulse">
+        <span id="rodando-badge" class="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-1 rounded-full animate-pulse"
+          {% if not rodando %}style="display:none"{% endif %}>
           ● Rodando — atualizando a cada 4s
         </span>
-        {% endif %}
       </div>
-      <pre class="bg-slate-900 text-green-300 text-xs rounded-xl p-4 overflow-auto max-h-[500px] whitespace-pre-wrap font-mono">{{ log or '(sem log)' }}</pre>
+      <pre id="scraper-log" class="bg-slate-900 text-green-300 text-xs rounded-xl p-4 overflow-auto max-h-[500px] whitespace-pre-wrap font-mono">{{ log or '(sem log)' }}</pre>
     </div>
 
   </main>
@@ -141,9 +137,46 @@
       const anyChecked = Array.from(boxes).some(b => b.checked);
       boxes.forEach(b => b.checked = !anyChecked);
     }
-    // Scroll log to bottom
-    const pre = document.querySelector('pre');
-    if (pre) pre.scrollTop = pre.scrollHeight;
+
+    // ── Log polling ──────────────────────────────────────────────────────────
+    const logEl = document.getElementById('scraper-log');
+
+    function scrollLog() {
+      if (logEl) logEl.scrollTop = logEl.scrollHeight;
+    }
+    scrollLog(); // scroll inicial
+
+    let wasActive = {{ 'true' if (rodando or importando) else 'false' }};
+    if (wasActive) {
+      document.getElementById('scraper-log')
+        ?.closest('div.bg-white')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    const poll = setInterval(async () => {
+      try {
+        const res  = await fetch('{{ url_for("admin_scraper_status") }}');
+        const data = await res.json();
+
+        if (logEl && data.log) {
+          logEl.textContent = data.log;
+          scrollLog();
+        }
+
+        const badge = document.getElementById('rodando-badge');
+        if (badge) badge.style.display = (data.rodando || data.importando) ? '' : 'none';
+
+        const active = data.rodando || data.importando;
+        if (wasActive && !active) {
+          clearInterval(poll);
+          location.reload(); // reload único ao terminar para mostrar estado final
+        }
+        wasActive = active;
+      } catch (e) { /* rede falhou, tenta de novo no próximo tick */ }
+    }, 4000);
+
+    // Não inicia poll se já estiver parado
+    if (!wasActive) clearInterval(poll);
   </script>
 </body>
 </html>

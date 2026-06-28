@@ -531,8 +531,8 @@ async def scrape_disciplina(page, lista_id: str, disciplina: str, tarefa_url: st
 # Excel
 # ─────────────────────────────────────────────
 def _col_lista(ws) -> int:
-    """Índice 0-based da coluna 'Lista' no Excel (varia se tem ou não coluna E)."""
-    header = [ws.cell(1, c).value for c in range(1, 13)]
+    """Índice 0-based da coluna 'Lista' no Excel."""
+    header = [ws.cell(1, c).value for c in range(1, 14)]
     for i, h in enumerate(header):
         if str(h or "").strip().upper() == "LISTA":
             return i
@@ -540,34 +540,57 @@ def _col_lista(ws) -> int:
     return 8 if tem_e else 7
 
 
-def listas_no_excel() -> set[str]:
+def _col_turma(ws) -> int:
+    """Índice 0-based da coluna 'Turma' no Excel."""
+    header = [ws.cell(1, c).value for c in range(1, 14)]
+    for i, h in enumerate(header):
+        if str(h or "").strip().upper() == "TURMA":
+            return i
+    tem_e = len(header) > 5 and str(header[5] or "").strip().upper() == "E"
+    return 11 if tem_e else 10
+
+
+def listas_no_excel(turma: str | None = None) -> set[str]:
+    """Retorna listas já presentes no Excel, opcionalmente filtradas por turma."""
     if not XLSX_PATH.exists():
         return set()
     wb = load_workbook(XLSX_PATH, data_only=True)
     ws = wb["Questões"] if "Questões" in wb.sheetnames else wb.active
-    col = _col_lista(ws)
-    return {
-        str(row[col]).strip()
-        for row in ws.iter_rows(min_row=2, values_only=True)
-        if row and len(row) > col and row[col]
-    }
+    col_l = _col_lista(ws)
+    col_t = _col_turma(ws)
+    result = set()
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if not row or len(row) <= col_l or not row[col_l]:
+            continue
+        if turma and (len(row) <= col_t or str(row[col_t] or "").strip() != turma):
+            continue
+        result.add(str(row[col_l]).strip())
+    return result
 
 
-def remover_lista_excel(lista_id: str):
-    """Remove todas as linhas de uma lista do Excel (para permitir re-scrape)."""
+def remover_lista_excel(lista_id: str, turma: str | None = None):
+    """Remove linhas de uma lista do Excel, respeitando a turma se informada."""
     if not XLSX_PATH.exists():
         return
     wb = load_workbook(XLSX_PATH)
     ws = wb["Questões"] if "Questões" in wb.sheetnames else wb.active
-    col = _col_lista(ws)
-    linhas_remover = [
-        row[0].row for row in ws.iter_rows(min_row=2)
-        if row[col].value and str(row[col].value).strip() == lista_id
-    ]
+    col_l = _col_lista(ws)
+    col_t = _col_turma(ws)
+    linhas_remover = []
+    for row in ws.iter_rows(min_row=2):
+        val_lista = row[col_l].value if len(row) > col_l else None
+        if not val_lista or str(val_lista).strip() != lista_id:
+            continue
+        if turma:
+            val_turma = row[col_t].value if len(row) > col_t else None
+            if str(val_turma or "").strip() != turma:
+                continue
+        linhas_remover.append(row[0].row)
     for row_num in reversed(linhas_remover):
         ws.delete_rows(row_num)
     wb.save(XLSX_PATH)
-    print(f"  ✓ {len(linhas_remover)} linhas de {lista_id} removidas do Excel")
+    turma_desc = f" ({turma})" if turma else ""
+    print(f"  ✓ {len(linhas_remover)} linhas de {lista_id}{turma_desc} removidas do Excel")
 
 
 def salvar_excel(novas: list[dict]):
@@ -681,8 +704,8 @@ async def main(lista_filtro: list[str] | None, inspecionar: bool, forcar: bool, 
             await browser.close()
             return
 
-        ja_no_excel = listas_no_excel()
-        print(f"\nListas já no Excel: {ja_no_excel or '(nenhuma)'}")
+        ja_no_excel = listas_no_excel(turma)
+        print(f"\nListas já no Excel ({turma}): {ja_no_excel or '(nenhuma)'}")
 
         filtro_set = {l.upper() for l in lista_filtro} if lista_filtro else None
 
@@ -690,7 +713,7 @@ async def main(lista_filtro: list[str] | None, inspecionar: bool, forcar: bool, 
         if forcar and filtro_set:
             for lista_up in filtro_set:
                 if lista_up in ja_no_excel:
-                    remover_lista_excel(lista_up)
+                    remover_lista_excel(lista_up, turma)
                     ja_no_excel.discard(lista_up)
 
         total_salvo = 0

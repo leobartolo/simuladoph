@@ -673,6 +673,23 @@ def admin_importar_excel():
     return redirect(url_for("admin_scraper"))
 
 
+@app.route("/admin/scraper/status")
+def admin_scraper_status():
+    if not session.get("admin_ok"):
+        return {"ok": False}, 403
+    proc = _scraper_proc.get("proc")
+    rodando = proc is not None and proc.poll() is None
+    imp = _import_proc.get("proc")
+    importando = imp is not None and imp.poll() is None
+    from flask import jsonify
+    return jsonify({
+        "rodando": rodando,
+        "importando": importando,
+        "log": SCRAPER_LOG.read_text(encoding="utf-8", errors="replace") if SCRAPER_LOG.exists() else "",
+        "import_log": IMPORT_LOG.read_text(encoding="utf-8", errors="replace") if IMPORT_LOG.exists() else "",
+    })
+
+
 @app.route("/admin/scraper", methods=["GET", "POST"])
 def admin_scraper():
     if not session.get("admin_ok"):
