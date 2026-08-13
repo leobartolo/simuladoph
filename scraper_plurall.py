@@ -94,7 +94,17 @@ async def fazer_login(page):
     await campo_login.fill(PLURALL_USUARIO)
 
     campo_senha = page.locator('input[type="password"]:visible').first
-    await campo_senha.fill(PLURALL_SENHA)
+    try:
+        await campo_senha.fill(PLURALL_SENHA)
+    except PWTimeout:
+        try:
+            await page.screenshot(path="debug_login_falha.png", full_page=True)
+            Path("debug_login_falha.html").write_text(await page.content(), encoding="utf-8")
+            print(f"  → Falha ao achar campo de senha. URL atual: {page.url}")
+            print("  → Dump salvo em debug_login_falha.png / debug_login_falha.html")
+        except Exception as e_dump:
+            print(f"  → Não foi possível salvar dump de diagnóstico: {e_dump}")
+        raise
 
     await page.locator(
         'button[type="submit"]:visible, input[type="submit"]:visible'
