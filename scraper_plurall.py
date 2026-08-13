@@ -71,6 +71,16 @@ def norm_disc(s: str) -> str:
 # ─────────────────────────────────────────────
 # Login
 # ─────────────────────────────────────────────
+async def _dump_debug(page, motivo: str):
+    try:
+        await page.screenshot(path="debug_login_falha.png", full_page=True)
+        Path("debug_login_falha.html").write_text(await page.content(), encoding="utf-8")
+        print(f"  → {motivo}. URL atual: {page.url}")
+        print("  → Dump salvo em debug_login_falha.png / debug_login_falha.html")
+    except Exception as e_dump:
+        print(f"  → Não foi possível salvar dump de diagnóstico: {e_dump}")
+
+
 async def fazer_login(page):
     if not PLURALL_USUARIO or not PLURALL_SENHA:
         raise RuntimeError(
@@ -84,6 +94,7 @@ async def fazer_login(page):
     try:
         await page.wait_for_selector("input", timeout=20_000)
     except PWTimeout:
+        await _dump_debug(page, "Nenhum campo de input apareceu na página de login")
         raise RuntimeError("Página de login não carregou — verifique a URL e a conexão.")
 
     # Tenta preencher o formulário. O Plurall usa login/username/text
@@ -97,13 +108,7 @@ async def fazer_login(page):
     try:
         await campo_senha.fill(PLURALL_SENHA)
     except PWTimeout:
-        try:
-            await page.screenshot(path="debug_login_falha.png", full_page=True)
-            Path("debug_login_falha.html").write_text(await page.content(), encoding="utf-8")
-            print(f"  → Falha ao achar campo de senha. URL atual: {page.url}")
-            print("  → Dump salvo em debug_login_falha.png / debug_login_falha.html")
-        except Exception as e_dump:
-            print(f"  → Não foi possível salvar dump de diagnóstico: {e_dump}")
+        await _dump_debug(page, "Falha ao achar campo de senha")
         raise
 
     await page.locator(
