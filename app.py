@@ -646,8 +646,38 @@ def admin_banco():
 BASE_DIR = Path(__file__).parent
 SCRAPER_LOG = BASE_DIR / "scraper.log"
 IMPORT_LOG  = BASE_DIR / "import.log"
+SCRAPER_PID = BASE_DIR / "scraper.pid"
+IMPORT_PID  = BASE_DIR / "import.pid"
 _scraper_proc: dict = {"proc": None}
 _import_proc:  dict = {"proc": None}
+
+
+def _pid_vivo(pid: int) -> bool:
+    """Checa se um PID ainda está vivo. Necessário porque o Gunicorn roda
+    múltiplos workers (processos separados) e o objeto Popen só existe na
+    memória do worker que deu Popen — outro worker precisa checar via PID."""
+    if os.name != "posix":
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _processo_rodando(proc_dict: dict, pidfile: Path) -> bool:
+    proc = proc_dict.get("proc")
+    if proc is not None and proc.poll() is None:
+        return True
+    try:
+        pid = int(pidfile.read_text().strip())
+    except (FileNotFoundError, ValueError):
+        return False
+    return _pid_vivo(pid)
 
 
 @app.route("/admin/importar-excel", methods=["POST"])
@@ -655,20 +685,21 @@ def admin_importar_excel():
     if not session.get("admin_ok"):
         return redirect(url_for("admin_login"))
 
-    proc = _import_proc.get("proc")
-    if proc and proc.poll() is None:
+    if _processo_rodando(_import_proc, IMPORT_PID):
         flash("Importação já em andamento.", "warning")
         return redirect(url_for("admin_scraper"))
 
     log_file = open(IMPORT_LOG, "w", encoding="utf-8")
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
-    _import_proc["proc"] = subprocess.Popen(
+    proc = subprocess.Popen(
         [sys.executable, "-u", str(BASE_DIR / "importar_questoes.py")],
         stdout=log_file, stderr=subprocess.STDOUT,
         cwd=str(BASE_DIR), env=env,
     )
+    _import_proc["proc"] = proc
     _import_proc["log_file"] = log_file
+    IMPORT_PID.write_text(str(proc.pid))
     flash("Importando Excel → banco...", "success")
     return redirect(url_for("admin_scraper"))
 
@@ -677,10 +708,8 @@ def admin_importar_excel():
 def admin_scraper_status():
     if not session.get("admin_ok"):
         return {"ok": False}, 403
-    proc = _scraper_proc.get("proc")
-    rodando = proc is not None and proc.poll() is None
-    imp = _import_proc.get("proc")
-    importando = imp is not None and imp.poll() is None
+    rodando = _processo_rodando(_scraper_proc, SCRAPER_PID)
+    importando = _processo_rodando(_import_proc, IMPORT_PID)
     from flask import jsonify
     return jsonify({
         "rodando": rodando,
@@ -733,21 +762,21 @@ def admin_scraper():
         env["PLURALL_SENHA"]     = senha
         env["SCRAPER_TURMA"]     = turma_scraper
 
-        _scraper_proc["proc"] = subprocess.Popen(
+        proc = subprocess.Popen(
             cmd, stdout=log_file, stderr=subprocess.STDOUT,
             cwd=str(BASE_DIR), env=env
         )
+        _scraper_proc["proc"] = proc
         _scraper_proc["log_file"] = log_file
+        SCRAPER_PID.write_text(str(proc.pid))
 
         flash(f"Importação iniciada para: {', '.join(listas)}.", "success")
         return redirect(url_for("admin_scraper"))
 
     log = SCRAPER_LOG.read_text(encoding="utf-8", errors="replace") if SCRAPER_LOG.exists() else ""
     import_log = IMPORT_LOG.read_text(encoding="utf-8", errors="replace") if IMPORT_LOG.exists() else ""
-    proc = _scraper_proc.get("proc")
-    rodando = proc is not None and proc.poll() is None
-    imp_proc = _import_proc.get("proc")
-    importando = imp_proc is not None and imp_proc.poll() is None
+    rodando = _processo_rodando(_scraper_proc, SCRAPER_PID)
+    importando = _processo_rodando(_import_proc, IMPORT_PID)
     listas_db = {r[0] for r in db.session.query(Questao.lista_ph).distinct().all()}
     listas_possiveis = sorted(listas_db | {f"PH{i:02d}" for i in range(1, 25)})
 

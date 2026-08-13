@@ -16,6 +16,8 @@ env/
 # Logs e arquivos de debug
 scraper.log
 debug_*.html
+debug_*.png
+*.pid
 
 # Variáveis de ambiente
 .env
