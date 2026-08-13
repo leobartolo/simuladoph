@@ -81,6 +81,23 @@ async def _dump_debug(page, motivo: str):
         print(f"  → Não foi possível salvar dump de diagnóstico: {e_dump}")
 
 
+async def _clicar_botao_principal(page):
+    """Clica no botão de ação do formulário (Continuar/Entrar). No Plurall
+    nem sempre é um <button type="submit">, então cai para busca por texto."""
+    try:
+        await page.locator(
+            'button[type="submit"]:visible, input[type="submit"]:visible'
+        ).first.click(timeout=5_000)
+        return
+    except PWTimeout:
+        pass
+
+    await page.locator(
+        'button:visible:has-text("Continuar"), button:visible:has-text("Entrar"), '
+        'button:visible:has-text("Acessar"), button:visible:has-text("Login")'
+    ).first.click(timeout=10_000)
+
+
 async def fazer_login(page):
     if not PLURALL_USUARIO or not PLURALL_SENHA:
         raise RuntimeError(
@@ -121,9 +138,11 @@ async def fazer_login(page):
         senha_ja_visivel = False
 
     if not senha_ja_visivel:
-        await page.locator(
-            'button[type="submit"]:visible, input[type="submit"]:visible'
-        ).first.click()
+        try:
+            await _clicar_botao_principal(page)
+        except PWTimeout:
+            await _dump_debug(page, "Não achei o botão 'Continuar' da 1ª etapa")
+            raise
 
     try:
         await campo_senha.wait_for(state="visible", timeout=20_000)
@@ -132,9 +151,11 @@ async def fazer_login(page):
         await _dump_debug(page, "Falha ao achar campo de senha")
         raise
 
-    await page.locator(
-        'button[type="submit"]:visible, input[type="submit"]:visible'
-    ).first.click()
+    try:
+        await _clicar_botao_principal(page)
+    except PWTimeout:
+        await _dump_debug(page, "Não achei o botão de login final")
+        raise
 
     # Aguarda chegar em atividades.plurall.net (OAuth pode ter vários redirects)
     try:
