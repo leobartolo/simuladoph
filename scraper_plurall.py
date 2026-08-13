@@ -104,8 +104,29 @@ async def fazer_login(page):
     ).first
     await campo_login.fill(PLURALL_USUARIO)
 
-    campo_senha = page.locator('input[type="password"]:visible').first
+    # Fecha banner de cookies se aparecer, para não atrapalhar cliques
     try:
+        botao_cookies = page.get_by_text("Aceitar e fechar", exact=False)
+        await botao_cookies.wait_for(state="visible", timeout=3_000)
+        await botao_cookies.click()
+    except PWTimeout:
+        pass
+
+    # Login em duas etapas: usuário primeiro, "Continuar", só então aparece a senha
+    campo_senha = page.locator('input[type="password"]:visible').first
+    senha_ja_visivel = True
+    try:
+        await campo_senha.wait_for(state="visible", timeout=1_500)
+    except PWTimeout:
+        senha_ja_visivel = False
+
+    if not senha_ja_visivel:
+        await page.locator(
+            'button[type="submit"]:visible, input[type="submit"]:visible'
+        ).first.click()
+
+    try:
+        await campo_senha.wait_for(state="visible", timeout=20_000)
         await campo_senha.fill(PLURALL_SENHA)
     except PWTimeout:
         await _dump_debug(page, "Falha ao achar campo de senha")
