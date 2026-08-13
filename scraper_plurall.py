@@ -181,6 +181,7 @@ async def ir_para_estudo_orientado(page):
 
     # Se caiu na página de login, a sessão não foi estabelecida
     if "login.plurall" in page.url or "login" in page.url.split("plurall.net")[-1]:
+        await _dump_debug(page, "Sessão não estabelecida — voltou para o login")
         raise RuntimeError(
             f"Sessão não estabelecida — redirecionado para login: {page.url}\n"
             "Verifique se as credenciais estão corretas e se a conta usa login direto (não SSO escolar)."
