@@ -31,3 +31,6 @@ import.log
 
 # Backups locais do banco
 backups/
+
+# Config de deploy local (contém caminho de chave SSH)
+deploy.local

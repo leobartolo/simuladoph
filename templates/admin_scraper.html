@@ -29,9 +29,28 @@
       {% endfor %}
     {% endwith %}
 
+    {% if not scraper_local %}
+    <!-- Servidor: scraper indisponível -->
+    <div class="bg-white rounded-2xl shadow-sm p-6 border-l-4 border-amber-400">
+      <h2 class="text-lg font-bold mb-1">Scraper do Plurall — só em casa</h2>
+      <p class="text-sm text-slate-500">
+        O Chromium não roda nesta instância (memória insuficiente). Rode o scraper na
+        máquina de casa — <code>python run_importacao.py --lista PHxx</code> ou o botão
+        deste painel na versão local. Lá ele já publica no GitHub e faz o deploy aqui.
+      </p>
+      <p class="text-sm text-slate-500 mt-2">
+        Se o <code>questoes.xlsx</code> já foi atualizado, use
+        <strong>“Carregar Excel → Banco”</strong> abaixo.
+      </p>
+    </div>
+    {% else %}
     <!-- Formulário -->
     <div class="bg-white rounded-2xl shadow-sm p-6">
-      <h2 class="text-lg font-bold mb-4">Importar questões do Plurall</h2>
+      <h2 class="text-lg font-bold mb-1">Importar questões do Plurall</h2>
+      <p class="text-sm text-slate-500 mb-4">
+        Ao terminar: importa no banco local, faz <code>git push</code> e roda o
+        <code>deploy.sh</code> na AWS — tudo automático.
+      </p>
       <form method="POST" class="space-y-5">
 
         <div class="grid grid-cols-2 gap-4">
@@ -96,6 +115,7 @@
         </button>
       </form>
     </div>
+    {% endif %}
 
     <!-- Importar Excel → Banco -->
     <div class="bg-white rounded-2xl shadow-sm p-6">

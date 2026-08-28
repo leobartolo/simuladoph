@@ -651,6 +651,10 @@ IMPORT_PID  = BASE_DIR / "import.pid"
 _scraper_proc: dict = {"proc": None}
 _import_proc:  dict = {"proc": None}
 
+# O scraper (Chromium/Playwright) só roda na máquina de casa. A presença do
+# deploy.local marca "esta é a máquina local" — na AWS o arquivo não existe.
+SCRAPER_LOCAL = (BASE_DIR / "deploy.local").exists()
+
 
 def _pid_vivo(pid: int) -> bool:
     """Checa se um PID ainda está vivo. Necessário porque o Gunicorn roda
@@ -725,6 +729,11 @@ def admin_scraper():
         return redirect(url_for("admin_login"))
 
     if request.method == "POST":
+        if not SCRAPER_LOCAL:
+            flash("O scraper só roda na máquina de casa. Aqui, use apenas "
+                  '"Carregar Excel → Banco" ou o botão de deploy.', "warning")
+            return redirect(url_for("admin_scraper"))
+
         listas = request.form.getlist("listas")
         forcar = request.form.get("forcar") == "1"
         turma_scraper = request.form.get("turma", "7ano")
@@ -790,6 +799,7 @@ def admin_scraper():
         plurall_usuario=session.get("plurall_usuario", ""),
         plurall_senha=session.get("plurall_senha", ""),
         turma=session.get("scraper_turma", "7ano"),
+        scraper_local=SCRAPER_LOCAL,
     )
 
 
