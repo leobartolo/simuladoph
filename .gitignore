@@ -25,3 +25,9 @@ debug_*.png
 # Editores
 .vscode/
 *.swp
+
+# Log de importacao
+import.log
+
+# Backups locais do banco
+backups/

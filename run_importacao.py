@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Wrapper chamado pelo admin local:
+Wrapper para rodar em casa (o Chromium do scraper não roda bem na AWS):
   1. Roda o scraper (Plurall → questoes.xlsx)
   2. Importa para o banco local
   3. Faz git commit + push do questoes.xlsx para o GitHub
 
-No Render, use o botão "Carregar Excel → Banco" que chama
-importar_questoes.py diretamente (sem scraper nem git).
+Depois, na AWS: rode ./deploy.sh (git pull + importa + reinicia o serviço),
+ou use o botão "Carregar Excel → Banco" no /admin/scraper.
 
 Uso: python -u run_importacao.py --lista PH11 [--forcar]
 """
@@ -58,8 +58,8 @@ def main():
     else:
         run(["git", "commit", "-m", msg], cwd=BASE)
         run(["git", "push"], cwd=BASE)
-        print("\n✓ Publicado. Acesse o admin no Render e clique em", flush=True)
-        print('  "Carregar Excel → Banco" para atualizar a produção.', flush=True)
+        print("\n✓ questoes.xlsx publicado no GitHub.", flush=True)
+        print("  Na AWS, rode:  ./deploy.sh", flush=True)
 
     print("\n=== Concluído ===", flush=True)
 
