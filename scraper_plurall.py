@@ -47,7 +47,9 @@ PLURALL_USUARIO = os.environ.get("PLURALL_USUARIO", "")
 PLURALL_SENHA   = os.environ.get("PLURALL_SENHA",   "")
 LOGIN_URL       = "https://atividades.plurall.net/"
 
-BASE_DIR    = Path(__file__).parent
+# SCRAPER_BASE permite rodar fora da pasta do projeto (ex: AtualizarBanco.exe
+# no PC do Miguel grava numa pasta de trabalho separada).
+BASE_DIR    = Path(os.environ.get("SCRAPER_BASE") or Path(__file__).parent)
 XLSX_PATH   = BASE_DIR / "questoes.xlsx"
 IMG_DIR     = BASE_DIR / "static" / "imagens"
 

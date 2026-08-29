@@ -2,8 +2,10 @@ import os
 import json
 import re
 import random
+import shutil
 import subprocess
 import sys
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -821,6 +823,80 @@ def admin_scraper():
         turma=session.get("scraper_turma", "7ano"),
         scraper_local=SCRAPER_LOCAL,
     )
+
+
+# ---------------------------------------------------------------------------
+# API de sincronizacao — o AtualizarBanco.exe (PC do Miguel) usa isto:
+#   GET  /admin/xlsx  -> baixa o questoes.xlsx atual (pra raspar a partir dele)
+#   POST /admin/xlsx  -> envia o xlsx novo (+ zip de imagens) e reimporta
+# Autenticacao: header X-Upload-Token == env UPLOAD_TOKEN, ou sessao admin.
+# ---------------------------------------------------------------------------
+
+UPLOAD_TOKEN = os.environ.get("UPLOAD_TOKEN", "")
+XLSX_PATH = BASE_DIR / "questoes.xlsx"
+IMAGENS_DIR = BASE_DIR / "static" / "imagens"
+BACKUPS_DIR = BASE_DIR / "backups"
+
+
+def _sync_autorizado():
+    if session.get("admin_ok"):
+        return True
+    tok = request.headers.get("X-Upload-Token") or request.form.get("token") or request.args.get("token")
+    return bool(UPLOAD_TOKEN) and tok == UPLOAD_TOKEN
+
+
+@app.route("/admin/xlsx", methods=["GET"])
+def admin_xlsx_download():
+    if not _sync_autorizado():
+        return "nao autorizado", 403
+    if not XLSX_PATH.exists():
+        return "questoes.xlsx nao encontrado", 404
+    return send_from_directory(BASE_DIR, "questoes.xlsx", as_attachment=True)
+
+
+@app.route("/admin/xlsx", methods=["POST"])
+def admin_xlsx_upload():
+    if not _sync_autorizado():
+        return "nao autorizado", 403
+
+    arquivo = request.files.get("xlsx")
+    if not arquivo or not arquivo.filename:
+        return "faltou o arquivo 'xlsx'", 400
+
+    BACKUPS_DIR.mkdir(exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if XLSX_PATH.exists():
+        shutil.copy(XLSX_PATH, BACKUPS_DIR / f"questoes.xlsx.{ts}")
+    db_file = BASE_DIR / "instance" / "simuladoph.db"
+    if db_file.exists():
+        shutil.copy(db_file, BACKUPS_DIR / f"simuladoph.db.{ts}")
+
+    arquivo.save(str(XLSX_PATH))
+
+    novas_imgs = 0
+    zip_imgs = request.files.get("imagens")
+    if zip_imgs and zip_imgs.filename:
+        IMAGENS_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            with zipfile.ZipFile(zip_imgs) as z:
+                for nome in z.namelist():
+                    base = os.path.basename(nome)
+                    if not base or nome.endswith("/") or ".." in nome:
+                        continue
+                    (IMAGENS_DIR / base).write_bytes(z.read(nome))
+                    novas_imgs += 1
+        except zipfile.BadZipFile:
+            return "zip de imagens invalido", 400
+
+    proc = subprocess.run(
+        [sys.executable, "-u", str(BASE_DIR / "importar_questoes.py")],
+        capture_output=True, text=True, cwd=str(BASE_DIR),
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+    )
+    saida = (proc.stdout + proc.stderr)[-4000:]
+    if proc.returncode != 0:
+        return {"ok": False, "imagens": novas_imgs, "log": saida}, 500
+    return {"ok": True, "imagens": novas_imgs, "log": saida}
 
 
 # ---------------------------------------------------------------------------
