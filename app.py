@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 import markupsafe
-from flask import Flask, render_template, redirect, url_for, request, flash, session
+from flask import Flask, render_template, redirect, url_for, request, flash, session, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -94,6 +94,26 @@ def index():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
     return redirect(url_for("login"))
+
+
+# ---------------------------------------------------------------------------
+# PWA — instalável no PC/celular, sempre puxando as questões da AWS
+# ---------------------------------------------------------------------------
+
+@app.route("/sw.js")
+def service_worker():
+    resp = send_from_directory(app.static_folder, "sw.js")
+    resp.headers["Content-Type"] = "application/javascript"
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@app.route("/manifest.webmanifest")
+def web_manifest():
+    resp = send_from_directory(app.static_folder, "manifest.webmanifest")
+    resp.headers["Content-Type"] = "application/manifest+json"
+    return resp
 
 
 @app.route("/login", methods=["GET", "POST"])
