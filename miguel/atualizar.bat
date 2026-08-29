@@ -1,10 +1,9 @@
 @echo off
-cd /d "%~dp0"
-title AtualizarBanco
+rem Atalho alternativo (o instalar.ps1 ja cria um icone na area de trabalho).
+set "APP=%LOCALAPPDATA%\SimuladoPH\app"
+set "VPYW=%LOCALAPPDATA%\SimuladoPH\venv\Scripts\pythonw.exe"
 
-set "VPY=%LOCALAPPDATA%\SimuladoPH\venv\Scripts\python.exe"
-
-if not exist "%VPY%" (
+if not exist "%VPYW%" (
   echo.
   echo   Ainda nao instalado. Rode "instalar.bat" primeiro ^(so 1 vez^).
   echo.
@@ -12,4 +11,4 @@ if not exist "%VPY%" (
   exit /b 1
 )
 
-"%VPY%" atualizar_banco.py
+start "" "%VPYW%" "%APP%\atualizar_gui.pyw"

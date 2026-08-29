@@ -2,24 +2,26 @@ ATUALIZAR BANCO - SimuladoPH
 ============================
 
 Serve para puxar questoes novas do Plurall e mandar pro site
-(simulado.bartolo.website), sem mexer em nada tecnico.
+(simulado.bartolo.website). Tem uma telinha - nada de terminal.
 
 
 PRIMEIRA VEZ (so uma vez):
 --------------------------
 1. Descompacte esta pasta em algum lugar fixo (ex: Documentos).
 2. Duplo-clique em  ->  instalar.bat
-   - Ele instala o Python e prepara tudo. Demora ~10 minutos.
-   - Se aparecer um aviso do Windows pedindo permissao, aceite.
-3. Quando aparecer "PRONTO!", pode fechar.
+   - Instala o Python e prepara tudo. Demora ~10 minutos.
+   - Se o Windows pedir permissao, aceite.
+3. No fim aparece um atalho na area de trabalho:
+   "Atualizar Banco - SimuladoPH"
 
 
 SEMPRE QUE QUISER ATUALIZAR:
 ---------------------------
-1. Duplo-clique em  ->  atualizar.bat
-2. Digite o login e a senha do Plurall.
-3. Digite a turma (7 ou 8) e as listas (ex: PH14).
-4. Espere. Quando aparecer "PRONTO!", as questoes ja estao no site.
+1. Duplo-clique no atalho da area de trabalho.
+2. Na janela: login e senha do Plurall, turma (7 ou 8),
+   e as listas (ex: PH14).
+3. Clique "Atualizar banco" e espere.
+   Quando aparecer "PRONTO!", as questoes ja estao no site.
 
 
 Problemas? Fale com o Leo.

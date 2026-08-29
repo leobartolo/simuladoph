@@ -35,7 +35,7 @@ def main():
 
     for nome in ("instalar.bat", "instalar.ps1", "atualizar.bat", "requirements.txt", "LEIA-ME.txt"):
         shutil.copy(MIGUEL / nome, SAIDA / nome)
-    for nome in ("scraper_plurall.py", "atualizar_banco.py"):
+    for nome in ("scraper_plurall.py", "atualizar_banco.py", "atualizar_gui.pyw"):
         shutil.copy(RAIZ / nome, SAIDA / nome)
 
     (SAIDA / "config.ini").write_text(
