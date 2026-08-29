@@ -78,11 +78,30 @@ class App(tk.Tk):
         ttk.Radiobutton(fr_turma, text="7º ano", value="7", variable=self.turma).pack(side="left")
         ttk.Radiobutton(fr_turma, text="8º ano", value="8", variable=self.turma).pack(side="left", padx=(12, 0))
 
-        campo(5, "Listas")
-        self.e_listas = ttk.Entry(wrap, width=34)
-        self.e_listas.grid(row=5, column=1, sticky="w", pady=4)
-        tk.Label(wrap, text="ex: PH14   ou   PH14 PH15", bg=BG, fg="#94a3b8",
-                 font=("Segoe UI", 8)).grid(row=6, column=1, sticky="w")
+        tk.Label(wrap, text="Listas", bg=BG, font=("Segoe UI", 9, "bold")).grid(
+            row=5, column=0, sticky="ne", padx=(0, 8), pady=(6, 0))
+        grade = tk.Frame(wrap, bg=BG)
+        grade.grid(row=5, column=1, sticky="w", pady=(4, 0))
+        self.listas_vars = {}
+        self.listas_botoes = []
+        for i in range(1, 21):
+            nome = f"PH{i:02d}"
+            v = tk.IntVar(value=0)
+            b = tk.Checkbutton(
+                grade, text=nome, variable=v, indicatoron=False, width=5,
+                font=("Segoe UI", 8, "bold"), borderwidth=1,
+                bg="white", fg="#334155", selectcolor=INDIGO,
+                activebackground="#e0e7ff", cursor="hand2",
+                relief="solid", offrelief="solid",
+            )
+            b.configure(command=lambda bb=b, vv=v: bb.configure(
+                fg="white" if vv.get() else "#334155"))
+            b.grid(row=(i - 1) // 5, column=(i - 1) % 5, padx=2, pady=2)
+            self.listas_vars[nome] = v
+            self.listas_botoes.append(b)
+        tk.Button(wrap, text="limpar seleção", command=self._limpar_listas,
+                  bg=BG, fg="#6366f1", font=("Segoe UI", 8), relief="flat",
+                  cursor="hand2", activebackground=BG).grid(row=6, column=1, sticky="w", pady=(2, 0))
 
         self.btn = tk.Button(wrap, text="Atualizar banco", command=self.iniciar,
                              bg=INDIGO, fg="white", font=("Segoe UI", 10, "bold"),
@@ -97,7 +116,6 @@ class App(tk.Tk):
         self.status = tk.Label(wrap, text="pronto", bg=BG, fg="#64748b", font=("Segoe UI", 9))
         self.status.grid(row=9, column=0, columnspan=2, sticky="w", pady=(8, 0))
 
-        self.e_listas.insert(0, "")
         (self.e_senha if login0 else self.e_login).focus_set()
         self.after(120, self._drenar)
 
@@ -120,6 +138,12 @@ class App(tk.Tk):
             pass
         self.after(120, self._drenar)
 
+    def _limpar_listas(self):
+        for v in self.listas_vars.values():
+            v.set(0)
+        for b in self.listas_botoes:
+            b.configure(fg="#334155")
+
     # -- acao ------------------------------------------------------------
     def iniciar(self):
         if self.rodando:
@@ -127,13 +151,13 @@ class App(tk.Tk):
         login = self.e_login.get().strip()
         senha = self.e_senha.get()
         turma = "7ano" if self.turma.get() == "7" else "8ano"
-        listas = self.e_listas.get().replace(",", " ").split()
+        listas = [n for n, v in self.listas_vars.items() if v.get()]
 
         if not login or not senha:
             messagebox.showwarning("Falta dado", "Preencha login e senha do Plurall.")
             return
         if not listas:
-            messagebox.showwarning("Falta dado", "Informe as listas (ex: PH14).")
+            messagebox.showwarning("Falta dado", "Marque pelo menos uma lista (PH01–PH20).")
             return
 
         salvar_prefs(login, self.turma.get())
