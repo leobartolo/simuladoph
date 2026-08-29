@@ -37,3 +37,15 @@ deploy.local
 
 # Backups pontuais
 *.bak*
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Config do AtualizarBanco (tem o token)
+config.ini
+
+# Pacote do Miguel (config.ini tem o token)
+pacote_miguel/
+AtualizarBanco.zip

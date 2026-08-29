@@ -1,3 +1,5 @@
+import contextlib
+import io
 import os
 import json
 import re
@@ -888,15 +890,15 @@ def admin_xlsx_upload():
         except zipfile.BadZipFile:
             return "zip de imagens invalido", 400
 
-    proc = subprocess.run(
-        [sys.executable, "-u", str(BASE_DIR / "importar_questoes.py")],
-        capture_output=True, text=True, cwd=str(BASE_DIR),
-        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
-    )
-    saida = (proc.stdout + proc.stderr)[-4000:]
-    if proc.returncode != 0:
-        return {"ok": False, "imagens": novas_imgs, "log": saida}, 500
-    return {"ok": True, "imagens": novas_imgs, "log": saida}
+    buf = io.StringIO()
+    try:
+        from importar_questoes import importar
+        with contextlib.redirect_stdout(buf):
+            importar()
+    except Exception as e:
+        return {"ok": False, "imagens": novas_imgs,
+                "log": (buf.getvalue() + f"\nERRO: {e}")[-4000:]}, 500
+    return {"ok": True, "imagens": novas_imgs, "log": buf.getvalue()[-4000:]}
 
 
 # ---------------------------------------------------------------------------
