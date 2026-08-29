@@ -2,8 +2,9 @@
 // Objetivo: deixar o app "instalavel" e carregar rapido em visitas repetidas.
 // O banco de questoes fica sempre na AWS — aqui so cacheamos o "casco" do app.
 
-const CACHE = 'simuladoph-v1';
-const SHELL = ['/', '/static/icon.svg', '/static/manifest.webmanifest'];
+// Só assets estáticos aqui — "/" responde 302 e o Cache API rejeita respostas redirecionadas.
+const CACHE = 'simuladoph-v2';
+const SHELL = ['/static/icon.svg', '/static/icon-192.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -24,12 +25,20 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // CDNs (tailwind/alpine) vao direto pra rede
 
+  const cacheable = (res) => res && res.ok && !res.redirected && res.type === 'basic';
+
   // Navegacoes e paginas: rede primeiro, cai pro cache se estiver offline.
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req)
-        .then((res) => { caches.open(CACHE).then((c) => c.put(req, res.clone())); return res; })
-        .catch(() => caches.match(req).then((m) => m || caches.match('/')))
+        .then((res) => {
+          if (cacheable(res)) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
     );
     return;
   }
@@ -38,7 +47,10 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req).then((res) => {
-        if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
+        if (cacheable(res)) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        }
         return res;
       }).catch(() => cached);
       return cached || network;
