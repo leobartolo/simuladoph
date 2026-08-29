@@ -34,3 +34,6 @@ backups/
 
 # Config de deploy local (contém caminho de chave SSH)
 deploy.local
+
+# Backups pontuais
+*.bak*

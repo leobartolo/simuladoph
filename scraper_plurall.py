@@ -676,6 +676,22 @@ def salvar_excel(novas: list[dict]):
             q["imagem"], q.get("turma", "7ano"),
         ])
 
+    # Rede de seguranca: remove linhas 100% identicas (evita duplicatas se uma
+    # lista foi raspada mais de uma vez sem --forcar).
+    seen, remover = set(), []
+    for row in ws.iter_rows(min_row=2):
+        vals = tuple("" if c.value is None else str(c.value) for c in row)
+        if not vals[0].strip():
+            continue
+        if vals in seen:
+            remover.append(row[0].row)
+        else:
+            seen.add(vals)
+    for num in reversed(remover):
+        ws.delete_rows(num)
+    if remover:
+        print(f"  (removidas {len(remover)} linhas duplicadas)")
+
     wb.save(XLSX_PATH)
     print(f"\n✓ {len(novas)} questões adicionadas → {XLSX_PATH}")
 
@@ -769,8 +785,10 @@ async def main(lista_filtro: list[str] | None, inspecionar: bool, forcar: bool, 
 
         filtro_set = {l.upper() for l in lista_filtro} if lista_filtro else None
 
-        # --forcar: remove do Excel para reextrair
-        if forcar and filtro_set:
+        # Raspar listas específicas SEMPRE substitui as que já estavam no Excel
+        # (senão acumula linhas duplicadas). --forcar continua aceito por
+        # compatibilidade, mas o comportamento agora é padrão.
+        if filtro_set:
             for lista_up in filtro_set:
                 if lista_up in ja_no_excel:
                     remover_lista_excel(lista_up, turma)
